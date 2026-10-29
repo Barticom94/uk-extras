@@ -140,7 +140,7 @@ def load_epg(svc, wanted, now):
                                                 (el.findtext("desc") or "").strip(), icon.get("src") if icon is not None else None))
         el.clear()
     for progs in out.values():
-        progs.sort()
+        progs.sort(key=lambda p: p[:3])  # a synopsis or picture (None when missing) must never decide the order
     return out
 
 
@@ -197,7 +197,7 @@ def write(path, obj):
         json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
 
 
-BAD_XML = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")  # not allowed anywhere in XML 1.0
+BAD_XML = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f￾￿]")  # not allowed anywhere in XML 1.0
 
 
 def xml_text(s):
@@ -213,16 +213,20 @@ def xmltv_time(ts):
 
 
 def iptv(out_dir, previews, urls, guides, now):
-    """The household add-on's TiviMate playlist and guide put the free channels after its own from iptv/: free.m3u,
-    one #EXTINF line and its stream per tile (in its section order, numbered from 1001), and the XMLTV <channel>s
-    and <programme>s (not ended yet, up to LIVE_HOURS ahead) as bare pieces it puts inside its own <tv>."""
-    order = list(SECTIONS)  # Entertainment, Movies, Sport, News...: the household add-on's section order
+    """The household's TiviMate playlist and guide put the free channels after their own from iptv/: free.m3u, one
+    #EXTINF line and its stream per tile, in its section order and numbered by section (Entertainment from 1001, Films
+    from 2001...), so a channel coming or going renumbers only its own section; and the XMLTV <channel>s and
+    <programme>s (not ended yet, up to LIVE_HOURS ahead) as bare pieces they put inside their own <tv>."""
+    order = list(SECTIONS)  # Entertainment, Movies, Sport, News...: the household's section order
     tiles = sorted(previews, key=lambda m: order.index(m["genres"][0]))  # stable, so each section keeps its order
-    m3u, chans, progs = [], [], []
-    for n, m in enumerate(tiles, 1001):
-        name, logo = " ".join(m["name"].split()), m.get("poster") or ""
+    m3u, chans, progs, last = [], [], [], {}
+    for m in tiles:
+        g = m["genres"][0]
+        last[g] = n = last.get(g, 1000 * (order.index(g) + 1)) + 1
+        # A stray line break in a name, logo or link would split its pair of lines: none in any of them.
+        name, logo, url = " ".join(m["name"].split()), "".join((m.get("poster") or "").split()), "".join(urls[m["id"]].split())
         m3u.append(f'#EXTINF:-1 tvg-id="{m["id"]}" tvg-chno="{n}" tvg-logo="{logo.replace(chr(34), "%22")}" '
-                   f'group-title="{SECTIONS[m["genres"][0]].capitalize()}",{name}\n{urls[m["id"]]}\n')
+                   f'group-title="{SECTIONS[g].capitalize()}",{name}\n{url}\n')
         chans.append(f'<channel id={xml_attr(m["id"])}><display-name lang="en">{xml_text(name)}</display-name>'
                      + (f"<icon src={xml_attr(logo)}/>" if logo else "") + "</channel>\n")
         for p in guides[m["id"]]:

@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # -I leaves the script folder off the path
 
-from build_channels import genre_of, guide_text, key_of, segments, uk_time
+from build_channels import genre_of, guide_text, iptv, key_of, segments, uk_time
 from build_netflix import norm
 
 utc = lambda *a: dt.datetime(*a, tzinfo=dt.timezone.utc).timestamp()
@@ -56,4 +56,28 @@ assert segments(ev, h + 3600, h + 7200) == [[int(h + 3600)]], "after the guide: 
 assert {x[1] for x in segments(filler, t0, t0 + 3600)} == {"Now: Sky News till 22:00 · Next: 22:00 Film"}, "one slot"
 
 assert norm("TYSON") == norm("Tyson") and norm("The Widower: 'Til Death Do Us Part") == "the widower til death do us part"
+
+# iptv/: the household add-on's section order and numbers, one line pair per tile, XML that parses whatever the
+# guides hold, programmes that haven't ended and start within 48 hours.
+import tempfile
+import xml.etree.ElementTree as ET
+
+tiles = [{"id": "ukx:news1", "name": "News\nOne", "poster": 'https://x/a"b\n.png', "genres": ["News"]},
+         {"id": "ukx:ent1", "name": "Tom & Jerry", "genres": ["Entertainment"]}]
+progs = {"ukx:news1": [(t0 - 7200, t0 - 3600, "Gone"), (t0, t0 + 1800, "A <b> & \x07c", "Desc & more", "https://x/i.png?a=1&b=2"),
+                       (t0 + 49 * 3600, t0 + 50 * 3600, "Too far")],
+         "ukx:ent1": [(t0, t0 + 600, "Fallback guide")]}  # titles only, as when a service has no XMLTV guide
+with tempfile.TemporaryDirectory() as out:
+    assert iptv(out, tiles, {"ukx:news1": "https://jmp2.uk/stvp-N\r\n", "ukx:ent1": "https://jmp2.uk/plu-E.m3u8"}, progs, t0 - 60) == 2
+    read = lambda n: open(os.path.join(out, "iptv", n), encoding="utf-8").read()
+    assert read("free.m3u").split("\n") == [
+        '#EXTINF:-1 tvg-id="ukx:ent1" tvg-chno="1001" tvg-logo="" group-title="Entertainment",Tom & Jerry', "https://jmp2.uk/plu-E.m3u8",
+        '#EXTINF:-1 tvg-id="ukx:news1" tvg-chno="4001" tvg-logo="https://x/a%22b.png" group-title="News",News One', "https://jmp2.uk/stvp-N",
+        ""], read("free.m3u")
+    tv = ET.fromstring(f"<tv>{read('channels.xml')}{read('programmes.xml')}</tv>")
+    assert [c.findtext("display-name") for c in tv.iter("channel")] == ["Tom & Jerry", "News One"]
+    got = [(p.get("channel"), p.findtext("title"), p.findtext("desc"), (p.find("icon") is not None) and p.find("icon").get("src"))
+           for p in tv.iter("programme")]
+    assert got == [("ukx:ent1", "Fallback guide", None, False), ("ukx:news1", "A <b> & c", "Desc & more", "https://x/i.png?a=1&b=2")], got
+    assert next(tv.iter("programme")).get("start") == "20261029210000 +0000"
 print("ok")

@@ -38,7 +38,14 @@ Pluto TV and Plex (`<service>/.channels.json.gz` and `<service>/gb.xml.gz`). It:
 - keeps now and next out of the catalogues and metas here (names, logos and blurbs only): Pages serves them as they
   were built, and with no hourly build (see below) they would show programmes that finished hours ago. So this
   add-on on its own has no now and next; `validate.py` fails a build that puts it back;
-- sorts each genre in Samsung's and Pluto's own channel order, then Plex alphabetically.
+- sorts each genre in Samsung's and Pluto's own channel order, then Plex alphabetically;
+- writes the pieces an IPTV playlist and guide need into `iptv/`: `free.m3u` (an `#EXTINF` line and its stream for
+  every tile, `tvg-id` = the `ukx:` id, in the household's section order and numbered by section, Entertainment from
+  1001, Films from 2001 and so on, so a channel coming or going renumbers only its own section; no `#EXTM3U`
+  header), and `channels.xml` and `programmes.xml` (XMLTV `<channel>` and `<programme>` elements, every programme
+  that hasn't ended, up to 48 hours ahead, with each guide's synopsis and picture, no `<tv>` around them). The
+  household's TiviMate playlist and guide (a Worker of their own, apart from the Nuvio add-ons) splice these in
+  after their own channels. Added in a1d34d8, which went out under the Netflix rename's commit message.
 
 Streams go through Matt Huisman's `jmp2.uk` redirects, the same ones his playlists use.
 
