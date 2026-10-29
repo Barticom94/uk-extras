@@ -60,10 +60,10 @@ decodes Nuvio's `ukx%3Aabc.json` back to `ukx:abc.json`.
 
 ## The hourly schedule
 
-GitHub has not run `free-channels.yml` on its schedule yet. Checked 29 Oct 16:09 UTC: the repo was created 12:04,
+GitHub has not run `free-channels.yml` on its schedule yet. Checked 29 Oct 16:31 UTC: the repo was created 12:04,
 both workflows are `active` on the default branch `main`, Actions are enabled with all actions allowed, the
 `github-pages` environment allows `main`, and push and manual runs all succeeded, yet no `schedule` run exists for
-`7 * * * *` (13:07, 14:07) or `17 * * * *` (15:17, set at 14:44). The same account's schedules do run in two
+`7 * * * *` (13:07, 14:07) or `17 * * * *` (15:17 and 16:17, set at 14:44). The same account's schedules do run in two
 other repos (a weekly one up to 90 minutes late; a daily one first ran 8 hours after its workflow was added). So
 nothing in this repo is set wrong that we can see: GitHub hasn't started the schedule for a new repo yet, and its
 docs say scheduled runs "can be delayed" under load and may be dropped. Nothing here can make it fire. What doesn't
