@@ -90,6 +90,8 @@ def main(site):
                 fail(f"{x['id']}: meta does not match the tile")
             if not streams or not all(s["url"].startswith("https://") for s in streams):
                 fail(f"{x['id']}: no https stream")
+            if not all((s.get("behaviorHints", {}).get("filename") or s["url"]).endswith(".m3u8") for s in streams):
+                fail(f"{x['id']}: a stream Nuvio can't tell is HLS (no .m3u8 url or filename hint)")
         seen = set()
         for g in GENRES:
             part = load(site, f"catalog/tv/{cid}/{java_encode('genre')}={java_encode(g)}.json")["metas"]

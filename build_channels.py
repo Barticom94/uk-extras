@@ -24,6 +24,7 @@ SERVICES = [
     ("PlutoTV", "Pluto TV", "https://jmp2.uk/plu-{id}.m3u8"),
     ("Plex", "Plex", "https://jmp2.uk/plex-{id}.m3u8"),
 ]
+KEEP_SUFFIX = {"tennis"}  # Tennis Channel and Tennis TV are different channels, so "channel"/"tv" stays on these
 CHANNELS_URL = "https://i.mjh.nz/{svc}/.channels.json.gz"
 EPG_URL = "https://i.mjh.nz/{svc}/gb.xml.gz"
 
@@ -78,10 +79,10 @@ def key_of(name):
     s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
     s = s.replace("&", " and ")
     s = re.sub(r"\bby (lionsgate|mech\+|stingray)\b|\bon plex\b|\bhd\b", " ", s)
-    s = re.sub(r"[^a-z0-9]+", "", s)
+    s = re.sub(r"[^a-z0-9+]+", "", s).replace("+", "plus")  # Tennis+ and Bloomberg TV+ are channels of their own
     s = re.sub(r"^the", "", s)
-    s = re.sub(r"(channel|tv)$", "", s)
-    return s
+    stem = re.sub(r"(channel|tv)$", "", s)
+    return s if stem in KEEP_SUFFIX else stem
 
 
 def genre_of(name, group):
@@ -212,7 +213,11 @@ def build(out_dir, now=None):
         previews.append((GENRES.index(first["genre"]), first["order"],
                          {k: meta[k] for k in ("id", "type", "name", "poster", "posterShape", "genres") if k in meta}
                          | ({"description": "\n".join(lines)} if lines else {})))
-        streams = [{"name": c["service"], "title": c["name"], "url": c["url"]} for c in copies]
+        # Nuvio picks HLS from the file name (behaviorHints.filename, then the URL). jmp2.uk/stvp-<id> has no
+        # extension, so without the hint ExoPlayer first tries it as a plain file and only recovers via its fallback.
+        streams = [{"name": c["service"], "title": c["name"], "url": c["url"]}
+                   | ({} if c["url"].endswith(".m3u8") else {"behaviorHints": {"filename": c["url"].rsplit("/", 1)[1] + ".m3u8"}})
+                   for c in copies]
         write(os.path.join(out_dir, "meta", "tv", file_name(meta["id"]) + ".json"), {"meta": meta})
         write(os.path.join(out_dir, "stream", "tv", file_name(meta["id"]) + ".json"), {"streams": streams})
 

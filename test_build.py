@@ -19,6 +19,9 @@ assert key_of("The Wicked Tuna Channel") == key_of("Wicked Tuna")
 assert key_of("Masha & the Bear") == key_of("Masha and the Bear")
 assert key_of("I Survived…") == key_of("I Survived...") == key_of("I Survived")
 assert key_of("Pluto TV Kids") != key_of("Kids")
+assert len({key_of("Tennis Channel"), key_of("Tennis TV"), key_of("Tennis+")}) == 3  # three different channels
+assert key_of("Bloomberg TV") != key_of("Bloomberg TV+")
+assert key_of("Ghost Hunters Channel") == key_of("Ghost Hunters") and key_of("Journy TV") == key_of("Journy")
 
 assert genre_of("Sky News", "News") == "News"
 assert genre_of("Sony One | Action Hits", None) == "Movies"
