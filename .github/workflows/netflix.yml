@@ -1,0 +1,36 @@
+name: Netflix rows
+
+# Netflix publishes its Top 10 files weekly (usually Tuesday). Wednesday's run picks them up;
+# Friday's catches a late file. Commits only when the rows changed, then redeploys the site.
+on:
+  schedule:
+    - cron: "30 9 * * 3"
+    - cron: "30 9 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: netflix
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the Netflix rows
+        run: python3 -I build_netflix.py
+      - name: Commit and redeploy if they changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add public/catalog netflix_matches.txt
+          if git diff --cached --quiet; then echo "Rows unchanged"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Netflix rows for $(date -u +%F)"
+          git push
+          gh workflow run free-channels.yml --ref main

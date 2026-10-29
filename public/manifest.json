@@ -1,0 +1,78 @@
+{
+ "id": "com.barticom94.ukextras",
+ "version": "1.0.0",
+ "name": "UK Extras",
+ "description": "Free UK channels from Samsung TV Plus, Pluto TV and Plex with what's on now and next, plus Netflix's own UK Top 10 and most popular films.",
+ "types": [
+  "movie",
+  "series",
+  "tv"
+ ],
+ "resources": [
+  "catalog",
+  {
+   "name": "meta",
+   "types": [
+    "tv"
+   ],
+   "idPrefixes": [
+    "ukx:"
+   ]
+  },
+  {
+   "name": "stream",
+   "types": [
+    "tv"
+   ],
+   "idPrefixes": [
+    "ukx:"
+   ]
+  }
+ ],
+ "catalogs": [
+  {
+   "type": "series",
+   "id": "ukx.netflix-top10-shows",
+   "name": "Netflix UK Top 10 Shows",
+   "showInHome": false
+  },
+  {
+   "type": "movie",
+   "id": "ukx.netflix-top10-films",
+   "name": "Netflix UK Top 10 Films",
+   "showInHome": false
+  },
+  {
+   "type": "movie",
+   "id": "ukx.netflix-popular",
+   "name": "Netflix Most Popular Films",
+   "showInHome": false
+  },
+  {
+   "type": "tv",
+   "id": "ukx.free",
+   "name": "Free UK Channels",
+   "showInHome": false,
+   "extra": [
+    {
+     "name": "genre",
+     "isRequired": false,
+     "options": [
+      "News",
+      "Entertainment",
+      "Movies",
+      "Kids",
+      "Sport",
+      "Documentary",
+      "Music",
+      "Lifestyle"
+     ]
+    }
+   ]
+  }
+ ],
+ "behaviorHints": {
+  "configurable": false,
+  "configurationRequired": false
+ }
+}

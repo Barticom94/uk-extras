@@ -1,0 +1,10 @@
+{
+ "_how": "Netflix title (exactly as in Netflix's file) -> IMDb id, for titles the automatic match gets wrong or misses. null leaves a title out. Each one checked by hand (year, cast, plot).",
+ "movie": {
+  "Animals": "tt31049299",
+  "Counterattack": "tt23648788"
+ },
+ "series": {
+  "Below": "tt35934755"
+ }
+}
