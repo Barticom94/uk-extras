@@ -4,7 +4,7 @@ name: Free channels
 # Nothing is committed: the downloads and the built JSON live only in the Pages artifact.
 on:
   schedule:
-    - cron: "7 * * * *"
+    - cron: "17 * * * *"
   push:
     branches: [main]
   workflow_dispatch:
