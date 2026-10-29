@@ -29,13 +29,15 @@ Pluto TV and Plex (`<service>/.channels.json.gz` and `<service>/gb.xml.gz`). It:
   Samsung TV Plus, then Pluto TV, then Plex (tested from a UK line on 29 Oct 2026: Samsung 119 of 120 and Pluto 76 of 77
   playlists answered; Plex answered too but rate-limits bursts with HTTP 429);
 - drops channels that need DRM (Nuvio can't play them), adult channels and channels for other languages' markets;
-- writes what's on now and next (UK time) as `releaseInfo` on the tiles (`Now: X till 18:00 · Next: 18:00 Y`, the
-  line Nuvio shows under a tile's name) and at the top of each description (`Now: X (17:00 to 18:00)`);
-- writes `live/<section>/<UTC hour>.json` for this hour and the 48 after: one row per channel, `[id, [from, tile JSON], ...]`,
-  each tile with the now and next from `from` (seconds), plus `live/<section>/names.json` with the tiles alone. A
-  reader that picks the entry that has started shows the right now and next between builds, for as long as each
-  guide reaches: on 29 Oct Samsung TV Plus's guide reached about 6 hours ahead, Pluto TV's about 14, Plex's up to 60.
-  The household add-on reads these; the Pages catalogues themselves only change with a build;
+- writes what's on now and next (UK time) into `live/<section>/<UTC hour>.json` only, for this hour and the 48 after:
+  one row per channel, `[id, [from, tile JSON], ...]`, each tile with the now and next from `from` (seconds) as
+  `releaseInfo` (`Now: X till 18:00 · Next: 18:00 Y`, the line Nuvio shows under a tile's name) and `description`
+  (`Now: X (17:00 to 18:00)`), plus `live/<section>/names.json` with the tiles alone. A reader that picks the entry
+  that has started shows the right now and next between builds, for as long as each guide reaches: on 29 Oct Samsung
+  TV Plus's guide reached about 6 hours ahead, Pluto TV's about 14, Plex's up to 60. The household add-on reads these;
+- keeps now and next out of the catalogues and metas here (names, logos and blurbs only): Pages serves them as they
+  were built, and with no hourly build (see below) they would show programmes that finished hours ago. So this
+  add-on on its own has no now and next; `validate.py` fails a build that puts it back;
 - sorts each genre in Samsung's and Pluto's own channel order, then Plex alphabetically.
 
 Streams go through Matt Huisman's `jmp2.uk` redirects, the same ones his playlists use.
@@ -71,5 +73,6 @@ depend on it:
 
 - the hourly files above keep now and next right for 6 to 14 hours after the last build;
 - the household add-on's hourly cron can start this workflow through GitHub's API (`workflow_dispatch`, which works)
-  once it holds a fine-grained token for this repo with Actions: read and write;
+  once it holds a fine-grained token for this repo with Actions: read and write, and `netflix.yml` on Wednesdays and
+  Fridays at 10:07 UTC (that schedule hasn't fired either, so the Netflix rows only change when it runs);
 - by hand: `gh workflow run free-channels.yml -R Barticom94/uk-extras`.

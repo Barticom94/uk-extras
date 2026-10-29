@@ -235,23 +235,23 @@ def build(out_dir, now=None):
         name = next((c["name"] for c in copies if not c["name"].isupper()), first["name"])
         # The guide that reaches furthest: copies of one channel run the same programmes, and Samsung's guide is the shortest.
         progs = max((c["progs"] for c in copies), key=lambda ps: ps[-1][1] if ps else 0)
-        text = guide_text(progs, now)
         about = next((c["description"] for c in copies if c["description"]), "")
         meta = {
             "id": f"ukx:{key}", "type": "tv", "name": name,
             "poster": first["logo"], "posterShape": "square", "logo": first["logo"],
             "background": next((c["art"] for c in copies if c["art"]), None),
-            # No releaseInfo here: the detail page prints it raw in its year slot.
-            "description": "\n\n".join(filter(None, [text.get("description"), about])),
+            # No now and next in the files here: they only change with a build, and GitHub's schedule hasn't run for
+            # this repo yet, so build-time text would show finished programmes for hours. It is in live/ instead.
+            "description": about,
             "genres": [first["genre"]],
             "behaviorHints": {"isLive": True},
         }
         meta = {k: v for k, v in meta.items() if v not in (None, "")}
         metas.append(meta)
         guides[meta["id"]] = progs
-        # The tile only needs now and next; the full blurb is on the detail page.
+        # The tile is the name and logo; the blurb is on the detail page.
         previews.append((GENRES.index(first["genre"]), first["order"],
-                         {k: meta[k] for k in ("id", "type", "name", "poster", "posterShape", "genres") if k in meta} | text))
+                         {k: meta[k] for k in ("id", "type", "name", "poster", "posterShape", "genres") if k in meta}))
         # Nuvio picks HLS from the file name (behaviorHints.filename, then the URL). jmp2.uk/stvp-<id> has no
         # extension, so without the hint ExoPlayer first tries it as a plain file and only recovers via its fallback.
         streams = [{"name": c["service"], "title": c["name"], "url": c["url"]}
@@ -273,11 +273,10 @@ def build(out_dir, now=None):
         # It pastes the entry that has started into its response as it is (no clock maths, no tile objects), and the
         # text stays right after this build for as long as each guide reaches, build or no build.
         # names.json, the tiles alone, is what it shows once the hours run out.
-        base = [{k: v for k, v in m.items() if k not in ("releaseInfo", "description")} for m in tiles]
-        write(os.path.join(out_dir, "live", SECTIONS[g], "names.json"), [[m["id"], [0, tile_json(m)]] for m in base])
+        write(os.path.join(out_dir, "live", SECTIONS[g], "names.json"), [[m["id"], [0, tile_json(m)]] for m in tiles])
         for h in range(hour, hour + (LIVE_HOURS + 1) * 3600, 3600):
             rows = [[m["id"]] + [[x[0], tile_json(m | ({"releaseInfo": x[1], "description": x[2]} if len(x) > 1 else {}))]
-                                 for x in segments(guides[m["id"]], h, h + 3600)] for m in base]
+                                 for x in segments(guides[m["id"]], h, h + 3600)] for m in tiles]
             name = dt.datetime.fromtimestamp(h, dt.timezone.utc).strftime("%Y%m%d%H") + ".json"
             write(os.path.join(out_dir, "live", SECTIONS[g], name), rows)
     counts = {g: sum(m["genres"][0] == g for m in metas) for g in GENRES}

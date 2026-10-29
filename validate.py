@@ -73,6 +73,8 @@ def main(site):
                 fail(f"{cid}: incomplete item {x.get('id')}")
             if ADULT.search(x.get("name", "")):
                 fail(f"{cid}: adult name {x['name']}")
+            if x.get("type") == "tv" and ("releaseInfo" in x or "description" in x):
+                fail(f"{cid}: {x.get('id')} has build-time text (now and next belongs in live/ only)")
         if cid.startswith("uks."):
             continue  # the same tiles as a ukx.free genre file, checked below
         if cid.startswith("ukx.netflix"):
@@ -96,6 +98,8 @@ def main(site):
                 continue
             if meta["id"] != x["id"] or meta["name"] != x["name"]:
                 fail(f"{x['id']}: meta does not match the tile")
+            if "releaseInfo" in meta or meta.get("description", "").startswith(("Now: ", "Next: ")):
+                fail(f"{x['id']}: build-time now and next in its meta")
             if not streams or not all(s["url"].startswith("https://") for s in streams):
                 fail(f"{x['id']}: no https stream")
             if not all((s.get("behaviorHints", {}).get("filename") or s["url"]).endswith(".m3u8") for s in streams):
