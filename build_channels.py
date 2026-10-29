@@ -1,4 +1,5 @@
-"""Free UK channels: build the ukx.free catalogue, metas and streams from i.mjh.nz (Samsung TV Plus, Pluto TV, Plex).
+"""Free UK channels: build the ukx.free and uks.<section> catalogues, metas, streams and the hourly now and next files
+(live/) from i.mjh.nz (Samsung TV Plus, Pluto TV, Plex).
 
 python -I build_channels.py [out_dir]   (default _site). Copies public/ (manifest + Netflix rows) into out_dir first.
 Standard library only. Runs hourly in GitHub Actions; nothing it downloads is committed.
@@ -17,6 +18,10 @@ import xml.etree.ElementTree as ET
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 GENRES = ["News", "Entertainment", "Movies", "Kids", "Sport", "Documentary", "Music", "Lifestyle"]
+# The uks.<section> catalogue (Sky's guide sections, as the household add-on names them) for each genre.
+SECTIONS = {"Entertainment": "entertainment", "Movies": "films", "Sport": "sport", "News": "news",
+            "Documentary": "documentaries", "Kids": "kids", "Music": "music", "Lifestyle": "lifestyle"}
+LIVE_HOURS = 48  # live/<section>/<UTC hour>.json for this many hours ahead, as far as the guides reach
 
 # Order = which copy plays first when a channel is on more than one service (see README: tested from a UK line).
 SERVICES = [
@@ -137,19 +142,50 @@ def load_epg(svc, wanted, now):
 
 
 def now_next(progs, now):
-    lines = []
-    cur = next((p for p in progs if p[0] <= now < p[1]), None)
-    later = [p for p in progs if p[0] >= (cur[1] if cur else now)]
-    if cur and cur[2]:
-        lines.append(f"Now: {uk_time(cur[0])} {cur[2]}")
-    if later and later[0][2]:
-        lines.append(f"Next: {uk_time(later[0][0])} {later[0][2]}")
-    return lines
+    """(now, next) as (start, stop, title), either None, like the household add-on's nowNext. Back-to-back slots with
+    the same title count as one (news channels repeat theirs hourly)."""
+    i = next((k for k, p in enumerate(progs) if p[1] > now), None)
+    if i is None:
+        return None, None
+    j = i
+    while j + 1 < len(progs) and progs[j + 1][2] == progs[i][2] and progs[j + 1][0] == progs[j][1]:
+        j += 1
+    first = (progs[i][0], progs[j][1], progs[i][2])
+    after = progs[j + 1] if j + 1 < len(progs) else None
+    return (first, after) if progs[i][0] <= now else (None, first)
+
+
+def guide_text(progs, now):
+    """{releaseInfo, description} worded like the household add-on's other channels, or {} with nothing to show.
+    releaseInfo is the line Nuvio shows under the name in grids and rows; description shows on focus and the detail page."""
+    cur, nxt = (p if p and p[2] else None for p in now_next(progs, now))
+    if not (cur or nxt):
+        return {}
+    line = [cur and f"Now: {cur[2]} till {uk_time(cur[1])}", nxt and f"Next: {uk_time(nxt[0])} {nxt[2]}"]
+    full = [cur and f"Now: {cur[2]} ({uk_time(cur[0])} to {uk_time(cur[1])})",
+            nxt and f"Next: {nxt[2]} ({uk_time(nxt[0])} to {uk_time(nxt[1])})"]
+    return {"releaseInfo": " · ".join(filter(None, line)), "description": "\n".join(filter(None, full))}
+
+
+def segments(progs, start, end):
+    """The text for the hour [start, end): [[from, releaseInfo, description], ...] with a new entry each time it changes,
+    [from] alone when there is nothing to show. The household add-on uses the last entry that has started."""
+    out = []
+    for t in sorted({start} | {x for p in progs for x in p[:2] if start < x < end}):
+        g = guide_text(progs, t)
+        seg = [int(t), g["releaseInfo"], g["description"]] if g else [int(t)]
+        if not out or out[-1][1:] != seg[1:]:
+            out.append(seg)
+    return out
 
 
 def file_name(item_id):
     # Pages serves "ukx:abc.json" for Nuvio's "ukx%3Aabc.json". NTFS can't hold ":" so local Windows runs swap it.
     return item_id.replace(":", "%3A") if os.name == "nt" else item_id
+
+
+def tile_json(obj):
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
 def write(path, obj):
@@ -182,7 +218,7 @@ def build(out_dir, now=None):
             copy = {
                 "service": label, "url": template.format(id=cid), "name": name, "logo": c.get("logo"),
                 "art": c.get("art"), "description": (c.get("description") or "").strip(),
-                "genre": genre_of(name, c.get("group")), "now_next": now_next(progs, now),
+                "genre": genre_of(name, c.get("group")), "progs": progs,
                 # Samsung's and Pluto's channel numbers are their own curated order (Sky News, CNN, GB News...)
                 "order": (rank, c.get("chno") or 10**6, name.lower()),
             }
@@ -192,27 +228,30 @@ def build(out_dir, now=None):
 
     if os.path.isdir(os.path.join(ROOT, "public")):
         shutil.copytree(os.path.join(ROOT, "public"), out_dir, dirs_exist_ok=True)
-    metas, previews = [], []
+    metas, previews, guides = [], [], {}
     for key, copies in merged.items():
         first = copies[0]
         # Keep a mixed-case name if the first copy shouts ("MOVIESPHERE" vs "Moviesphere").
         name = next((c["name"] for c in copies if not c["name"].isupper()), first["name"])
-        lines = next((c["now_next"] for c in copies if c["now_next"]), [])
+        # The guide that reaches furthest: copies of one channel run the same programmes, and Samsung's guide is the shortest.
+        progs = max((c["progs"] for c in copies), key=lambda ps: ps[-1][1] if ps else 0)
+        text = guide_text(progs, now)
         about = next((c["description"] for c in copies if c["description"]), "")
         meta = {
             "id": f"ukx:{key}", "type": "tv", "name": name,
             "poster": first["logo"], "posterShape": "square", "logo": first["logo"],
             "background": next((c["art"] for c in copies if c["art"]), None),
-            "description": "\n".join(lines + ([""] if lines and about else []) + ([about] if about else [])),
+            # No releaseInfo here: the detail page prints it raw in its year slot.
+            "description": "\n\n".join(filter(None, [text.get("description"), about])),
             "genres": [first["genre"]],
             "behaviorHints": {"isLive": True},
         }
         meta = {k: v for k, v in meta.items() if v not in (None, "")}
         metas.append(meta)
+        guides[meta["id"]] = progs
         # The tile only needs now and next; the full blurb is on the detail page.
         previews.append((GENRES.index(first["genre"]), first["order"],
-                         {k: meta[k] for k in ("id", "type", "name", "poster", "posterShape", "genres") if k in meta}
-                         | ({"description": "\n".join(lines)} if lines else {})))
+                         {k: meta[k] for k in ("id", "type", "name", "poster", "posterShape", "genres") if k in meta} | text))
         # Nuvio picks HLS from the file name (behaviorHints.filename, then the URL). jmp2.uk/stvp-<id> has no
         # extension, so without the hint ExoPlayer first tries it as a plain file and only recovers via its fallback.
         streams = [{"name": c["service"], "title": c["name"], "url": c["url"]}
@@ -223,9 +262,24 @@ def build(out_dir, now=None):
 
     previews = [p for *_, p in sorted(previews, key=lambda p: p[:2])]
     write(os.path.join(out_dir, "catalog", "tv", "ukx.free.json"), {"metas": previews})
+    hour = int(now // 3600 * 3600)
     for g in GENRES:
-        write(os.path.join(out_dir, "catalog", "tv", "ukx.free", f"genre={g}.json"),
-              {"metas": [m for m in previews if m["genres"][0] == g]})
+        tiles = [m for m in previews if m["genres"][0] == g]
+        write(os.path.join(out_dir, "catalog", "tv", "ukx.free", f"genre={g}.json"), {"metas": tiles})
+        # The same tiles as Sky's guide section: what the Pages install shows in Live TV folders.
+        write(os.path.join(out_dir, "catalog", "tv", f"uks.{SECTIONS[g]}.json"), {"metas": tiles})
+        # For the household add-on, which puts these after its own channels: live/<section>/<UTC hour>.json for every
+        # hour ahead, one row per tile, [id, [from, tile JSON], ...], each tile JSON with the now and next from `from`.
+        # It pastes the entry that has started into its response as it is (no clock maths, no tile objects), and the
+        # text stays right after this build for as long as each guide reaches, build or no build.
+        # names.json, the tiles alone, is what it shows once the hours run out.
+        base = [{k: v for k, v in m.items() if k not in ("releaseInfo", "description")} for m in tiles]
+        write(os.path.join(out_dir, "live", SECTIONS[g], "names.json"), [[m["id"], [0, tile_json(m)]] for m in base])
+        for h in range(hour, hour + (LIVE_HOURS + 1) * 3600, 3600):
+            rows = [[m["id"]] + [[x[0], tile_json(m | ({"releaseInfo": x[1], "description": x[2]} if len(x) > 1 else {}))]
+                                 for x in segments(guides[m["id"]], h, h + 3600)] for m in base]
+            name = dt.datetime.fromtimestamp(h, dt.timezone.utc).strftime("%Y%m%d%H") + ".json"
+            write(os.path.join(out_dir, "live", SECTIONS[g], name), rows)
     counts = {g: sum(m["genres"][0] == g for m in metas) for g in GENRES}
     multi = sum(len(c) > 1 for c in merged.values())
     print(f"free channels: {len(metas)} ({multi} on more than one service); dropped {dropped}; by genre {counts}")

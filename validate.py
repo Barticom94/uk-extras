@@ -4,6 +4,7 @@ Follows the same URLs NuvioTV builds (CatalogRepositoryImpl, MetaRepositoryImpl,
 ids and extras go through URLEncoder, so "ukx:abc" is asked for as "ukx%3Aabc.json"; GitHub Pages decodes that
 back to the file "ukx:abc.json"). Exits 1 on the first broken rule it finds.
 """
+import datetime as dt
 import json
 import os
 import re
@@ -18,6 +19,11 @@ CATALOGS = [
     ("tv", "ukx.free", "Free UK Channels"),
 ]
 GENRES = ["News", "Entertainment", "Movies", "Kids", "Sport", "Documentary", "Music", "Lifestyle"]
+# Sky's guide sections (the household add-on's ids and names) and the genre each one holds.
+SECTIONS = [("entertainment", "Entertainment", "Entertainment"), ("films", "Films", "Movies"), ("sport", "Sport", "Sport"),
+            ("news", "News", "News"), ("documentaries", "Documentaries", "Documentary"), ("kids", "Kids", "Kids"),
+            ("music", "Music", "Music"), ("lifestyle", "Lifestyle", "Lifestyle")]
+CATALOGS += [("tv", f"uks.{s}", name) for s, name, _ in SECTIONS]
 ADULT = re.compile(r"erotic|xxx|porn|playboy|hustler|red ?light|naughty|after dark|18\+", re.I)
 
 
@@ -67,6 +73,8 @@ def main(site):
                 fail(f"{cid}: incomplete item {x.get('id')}")
             if ADULT.search(x.get("name", "")):
                 fail(f"{cid}: adult name {x['name']}")
+        if cid.startswith("uks."):
+            continue  # the same tiles as a ukx.free genre file, checked below
         if cid.startswith("ukx.netflix"):
             if len(metas) < 5 or not all(re.fullmatch(r"tt\d+", x["id"]) and x["type"] in ("movie", "series") for x in metas):
                 fail(f"{cid}: needs 5+ IMDb items")
@@ -101,6 +109,41 @@ def main(site):
             seen |= {p["id"] for p in part}
         if seen != ids:
             fail("genre files do not add up to the full list")
+
+        # Sections: the genre's tiles in the same order, and the hourly rows the household add-on reads (this hour's
+        # and names.json): every tile, in order, its entries starting at the hour and each one a whole tile.
+        hour = int(dt.datetime.now(dt.timezone.utc).timestamp() // 3600 * 3600)
+        key = dt.datetime.fromtimestamp(hour, dt.timezone.utc).strftime("%Y%m%d%H")
+        for s, _, g in SECTIONS:
+            tiles = load(site, f"catalog/tv/uks.{s}.json")["metas"]
+            part = load(site, f"catalog/tv/{cid}/genre={java_encode(g)}.json")["metas"]
+            if [x["id"] for x in tiles] != [x["id"] for x in part]:
+                fail(f"uks.{s}: not the {g} tiles in their order")
+            for f, start in ((key, hour), ("names", 0)):
+                try:
+                    rows = load(site, f"live/{s}/{f}.json")
+                except OSError:
+                    fail(f"live/{s}/{f}.json is missing")
+                    continue
+                if [r[0] for r in rows] != [x["id"] for x in tiles]:
+                    fail(f"live/{s}/{f}: not the section's tiles in their order")
+                    continue
+                with_text = 0
+                for (i, *segs), tile in zip(rows, tiles):
+                    froms = [x[0] for x in segs]
+                    if froms[0] != start or froms != sorted(set(froms)) or (start and froms[-1] >= start + 3600):
+                        fail(f"live/{s}/{f}: {i} entries must start at the hour, in order, within it")
+                    for _, raw in segs:
+                        t = json.loads(raw)
+                        if {k: t[k] for k in ("id", "name", "poster")} != {k: tile[k] for k in ("id", "name", "poster")}:
+                            fail(f"live/{s}/{f}: {i} entry is not its tile")
+                        if f == "names" and ("releaseInfo" in t or "description" in t):
+                            fail(f"live/{s}/names: {i} has text")
+                        if "releaseInfo" in t and not t["releaseInfo"].startswith(("Now: ", "Next: ")):
+                            fail(f"live/{s}/{f}: {i} odd text {t['releaseInfo'][:40]}")
+                    with_text += any('"releaseInfo"' in raw for _, raw in segs)
+                if f == key:
+                    counts[f"live {s} {key} with now/next"] = with_text
 
     size = sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(site) for f in fs)
     print(json.dumps(counts, indent=1))

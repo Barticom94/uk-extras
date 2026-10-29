@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # -I leaves the script folder off the path
 
-from build_channels import genre_of, key_of, now_next, uk_time
+from build_channels import genre_of, guide_text, key_of, segments, uk_time
 from build_netflix import norm
 
 utc = lambda *a: dt.datetime(*a, tzinfo=dt.timezone.utc).timestamp()
@@ -30,10 +30,30 @@ assert genre_of("The Kids in the Hall", None) == "Entertainment"
 assert genre_of("Pluto TV Slasher Movies", "Halloween") == "Movies"
 assert genre_of("Judge Judy", None) == "Entertainment"
 
-t = utc(2026, 10, 29, 11, 20)
-progs = [(utc(2026, 10, 29, 11), utc(2026, 10, 29, 11, 30), "Sky News at 11"), (utc(2026, 10, 29, 11, 30), utc(2026, 10, 29, 12), "Sky News Today")]
-assert now_next(progs, t) == ["Now: 11:00 Sky News at 11", "Next: 11:30 Sky News Today"]
-assert now_next([], t) == []
+# Now and next, worded as the household add-on words its other channels (its own test has the same cases).
+t0 = utc(2026, 10, 29, 21)
+ev = [(t0, t0 + 1800, "Newsnight"), (t0 + 1800, t0 + 5400, "The Film"), (t0 + 5400, t0 + 7200, "Late News")]
+assert guide_text(ev, t0 + 1799) == {"releaseInfo": "Now: Newsnight till 21:30 · Next: 21:30 The Film",
+                                     "description": "Now: Newsnight (21:00 to 21:30)\nNext: The Film (21:30 to 22:30)"}
+assert guide_text(ev, t0 + 1800)["releaseInfo"] == "Now: The Film till 22:30 · Next: 22:30 Late News"
+assert guide_text(ev, t0 + 5460)["releaseInfo"] == "Now: Late News till 23:00"
+assert guide_text(ev, t0 - 600)["releaseInfo"] == "Next: 21:00 Newsnight"
+assert guide_text(ev, t0 + 7200) == {} and guide_text([], t0) == {}
+mid = utc(2026, 10, 29, 23, 30)
+late = [(mid, mid + 3600, "Late Film"), (mid + 3600, mid + 5400, "News at Night")]
+assert guide_text(late, mid + 1740)["releaseInfo"] == "Now: Late Film till 00:30 · Next: 00:30 News at Night"
+filler = [(t0, t0 + 1800, "Sky News"), (t0 + 1800, t0 + 3600, "Sky News"), (t0 + 3600, t0 + 7200, "Film")]
+assert guide_text(filler, t0 + 60)["releaseInfo"] == "Now: Sky News till 22:00 · Next: 22:00 Film"
+assert guide_text([(t0, t0 + 1800, ""), (t0 + 1800, t0 + 3600, "B")], t0)["releaseInfo"] == "Next: 21:30 B"
+
+# Hourly entries: the text at the hour, then one per change; [from] alone once the guide has run out.
+h = utc(2026, 10, 29, 22)
+segs = segments(ev, h, h + 3600)
+assert [x[0] for x in segs] == [h, t0 + 5400], segs
+assert segs[0][1] == "Now: The Film till 22:30 · Next: 22:30 Late News" and segs[1][1] == "Now: Late News till 23:00"
+assert segments(ev, h + 1800, h + 5400) == [[int(h + 1800), "Now: Late News till 23:00", "Now: Late News (22:30 to 23:00)"], [int(t0 + 7200)]]
+assert segments(ev, h + 3600, h + 7200) == [[int(h + 3600)]], "after the guide: nothing to show"
+assert {x[1] for x in segments(filler, t0, t0 + 3600)} == {"Now: Sky News till 22:00 · Next: 22:00 Film"}, "one slot"
 
 assert norm("TYSON") == norm("Tyson") and norm("The Widower: 'Til Death Do Us Part") == "the widower til death do us part"
 print("ok")
