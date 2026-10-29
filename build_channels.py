@@ -1,5 +1,5 @@
-"""Free UK channels: build the ukx.free and uks.<section> catalogues, metas, streams and the hourly now and next files
-(live/) from i.mjh.nz (Samsung TV Plus, Pluto TV, Plex).
+"""Free UK channels: build the ukx.free and uks.<section> catalogues, metas, streams, the hourly now and next files
+(live/) and the IPTV playlist and guide pieces (iptv/) from i.mjh.nz (Samsung TV Plus, Pluto TV, Plex).
 
 python -I build_channels.py [out_dir]   (default _site). Copies public/ (manifest + Netflix rows) into out_dir first.
 Standard library only. Runs hourly in GitHub Actions; nothing it downloads is committed.
@@ -15,6 +15,7 @@ import sys
 import unicodedata
 import urllib.request
 import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape, quoteattr
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 GENRES = ["News", "Entertainment", "Movies", "Kids", "Sport", "Documentary", "Music", "Lifestyle"]
@@ -123,7 +124,7 @@ def load_service(svc):
 
 
 def load_epg(svc, wanted, now):
-    """{channel_id: [(start, stop, title), ...]} for programmes that have not ended yet, sorted."""
+    """{channel_id: [(start, stop, title, synopsis, image), ...]} for programmes that have not ended yet, sorted."""
     out = {}
     raw = gzip.decompress(fetch(EPG_URL.format(svc=svc)))
     for _, el in ET.iterparse(io.BytesIO(raw)):
@@ -134,7 +135,9 @@ def load_epg(svc, wanted, now):
             stop = dt.datetime.strptime(el.get("stop"), "%Y%m%d%H%M%S %z").timestamp()
             if stop > now:
                 start = dt.datetime.strptime(el.get("start"), "%Y%m%d%H%M%S %z").timestamp()
-                out.setdefault(cid, []).append((start, stop, (el.findtext("title") or "").strip()))
+                icon = el.find("icon")
+                out.setdefault(cid, []).append((start, stop, (el.findtext("title") or "").strip(),
+                                                (el.findtext("desc") or "").strip(), icon.get("src") if icon is not None else None))
         el.clear()
     for progs in out.values():
         progs.sort()
@@ -194,6 +197,48 @@ def write(path, obj):
         json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
 
 
+BAD_XML = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")  # not allowed anywhere in XML 1.0
+
+
+def xml_text(s):
+    return escape(BAD_XML.sub("", s))
+
+
+def xml_attr(s):
+    return quoteattr(BAD_XML.sub("", s))
+
+
+def xmltv_time(ts):
+    return dt.datetime.fromtimestamp(ts, dt.timezone.utc).strftime("%Y%m%d%H%M%S +0000")
+
+
+def iptv(out_dir, previews, urls, guides, now):
+    """The household add-on's TiviMate playlist and guide put the free channels after its own from iptv/: free.m3u,
+    one #EXTINF line and its stream per tile (in its section order, numbered from 1001), and the XMLTV <channel>s
+    and <programme>s (not ended yet, up to LIVE_HOURS ahead) as bare pieces it puts inside its own <tv>."""
+    order = list(SECTIONS)  # Entertainment, Movies, Sport, News...: the household add-on's section order
+    tiles = sorted(previews, key=lambda m: order.index(m["genres"][0]))  # stable, so each section keeps its order
+    m3u, chans, progs = [], [], []
+    for n, m in enumerate(tiles, 1001):
+        name, logo = " ".join(m["name"].split()), m.get("poster") or ""
+        m3u.append(f'#EXTINF:-1 tvg-id="{m["id"]}" tvg-chno="{n}" tvg-logo="{logo.replace(chr(34), "%22")}" '
+                   f'group-title="{SECTIONS[m["genres"][0]].capitalize()}",{name}\n{urls[m["id"]]}\n')
+        chans.append(f'<channel id={xml_attr(m["id"])}><display-name lang="en">{xml_text(name)}</display-name>'
+                     + (f"<icon src={xml_attr(logo)}/>" if logo else "") + "</channel>\n")
+        for p in guides[m["id"]]:
+            if p[2] and p[1] > now and p[0] < now + LIVE_HOURS * 3600:
+                desc, icon = (p[3], p[4]) if len(p) > 3 else ("", None)  # the fallback guide has titles only
+                progs.append(f'<programme start="{xmltv_time(p[0])}" stop="{xmltv_time(p[1])}" channel={xml_attr(m["id"])}>'
+                             f'<title lang="en">{xml_text(p[2])}</title>'
+                             + (f'<desc lang="en">{xml_text(desc)}</desc>' if desc else "")
+                             + (f"<icon src={xml_attr(icon)}/>" if icon else "") + "</programme>\n")
+    os.makedirs(os.path.join(out_dir, "iptv"), exist_ok=True)
+    for name, parts in (("free.m3u", m3u), ("channels.xml", chans), ("programmes.xml", progs)):
+        with open(os.path.join(out_dir, "iptv", name), "w", encoding="utf-8", newline="\n") as f:
+            f.write("".join(parts))
+    return len(progs)
+
+
 def build(out_dir, now=None):
     now = now or dt.datetime.now(dt.timezone.utc).timestamp()
     merged, dropped = {}, {"drm": 0, "adult": 0, "language": 0}
@@ -228,7 +273,7 @@ def build(out_dir, now=None):
 
     if os.path.isdir(os.path.join(ROOT, "public")):
         shutil.copytree(os.path.join(ROOT, "public"), out_dir, dirs_exist_ok=True)
-    metas, previews, guides = [], [], {}
+    metas, previews, guides, urls = [], [], {}, {}
     for key, copies in merged.items():
         first = copies[0]
         # Keep a mixed-case name if the first copy shouts ("MOVIESPHERE" vs "Moviesphere").
@@ -249,6 +294,7 @@ def build(out_dir, now=None):
         meta = {k: v for k, v in meta.items() if v not in (None, "")}
         metas.append(meta)
         guides[meta["id"]] = progs
+        urls[meta["id"]] = first["url"]  # an IPTV entry has one stream: the copy that plays first here
         # The tile is the name and logo; the blurb is on the detail page.
         previews.append((GENRES.index(first["genre"]), first["order"],
                          {k: meta[k] for k in ("id", "type", "name", "poster", "posterShape", "genres") if k in meta}))
@@ -261,6 +307,7 @@ def build(out_dir, now=None):
         write(os.path.join(out_dir, "stream", "tv", file_name(meta["id"]) + ".json"), {"streams": streams})
 
     previews = [p for *_, p in sorted(previews, key=lambda p: p[:2])]
+    programmes = iptv(out_dir, previews, urls, guides, now)
     write(os.path.join(out_dir, "catalog", "tv", "ukx.free.json"), {"metas": previews})
     hour = int(now // 3600 * 3600)
     for g in GENRES:
@@ -281,7 +328,8 @@ def build(out_dir, now=None):
             write(os.path.join(out_dir, "live", SECTIONS[g], name), rows)
     counts = {g: sum(m["genres"][0] == g for m in metas) for g in GENRES}
     multi = sum(len(c) > 1 for c in merged.values())
-    print(f"free channels: {len(metas)} ({multi} on more than one service); dropped {dropped}; by genre {counts}")
+    print(f"free channels: {len(metas)} ({multi} on more than one service); dropped {dropped}; by genre {counts}; "
+          f"{programmes} guide programmes")
     return metas
 
 

@@ -10,12 +10,13 @@ import os
 import re
 import sys
 import urllib.parse
+import xml.etree.ElementTree as ET
 
 MANIFEST_ID = "com.barticom94.ukextras"
 CATALOGS = [
-    ("series", "ukx.netflix-top10-shows", "Netflix UK Top 10 Shows"),
-    ("movie", "ukx.netflix-top10-films", "Netflix UK Top 10 Films"),
-    ("movie", "ukx.netflix-popular", "Netflix Most Popular Films"),
+    ("series", "ukx.netflix-top10-shows", "Netflix - Top 10 series"),
+    ("movie", "ukx.netflix-top10-films", "Netflix - Top 10 films"),
+    ("movie", "ukx.netflix-popular", "Netflix - Most popular films"),
     ("tv", "ukx.free", "Free UK Channels"),
 ]
 GENRES = ["News", "Entertainment", "Movies", "Kids", "Sport", "Documentary", "Music", "Lifestyle"]
@@ -148,6 +149,29 @@ def main(site):
                     with_text += any('"releaseInfo"' in raw for _, raw in segs)
                 if f == key:
                     counts[f"live {s} {key} with now/next"] = with_text
+
+    # iptv/: the pieces the household add-on splices into its TiviMate playlist and guide. Every free tile once, in
+    # pairs of #EXTINF line and https stream; the XMLTV pieces parse inside a <tv> and the programmes are the tiles'.
+    tiles = {x["id"] for x in load(site, "catalog/tv/ukx.free.json")["metas"]}
+    with open(os.path.join(site, "iptv", "free.m3u"), encoding="utf-8") as f:
+        lines = f.read().split("\n")
+    infos, urls = lines[0:-1:2], lines[1::2]
+    m3u_ids = [re.match(r'#EXTINF:-1 tvg-id="([^"]+)" tvg-chno="\d+" ', x) for x in infos]
+    if lines[-1] or not all(m3u_ids) or not all(u.startswith("https://") for u in urls):
+        fail("iptv/free.m3u: not #EXTINF and https stream pairs")
+    elif sorted(x[1] for x in m3u_ids) != sorted(tiles):
+        fail("iptv/free.m3u: not every free tile once")
+    xml = []
+    for name in ("channels.xml", "programmes.xml"):
+        with open(os.path.join(site, "iptv", name), encoding="utf-8") as f:
+            xml.append(f.read())
+    try:
+        tv = ET.fromstring(f"<tv>{''.join(xml)}</tv>")
+        if {c.get("id") for c in tv.iter("channel")} != tiles or not {p.get("channel") for p in tv.iter("programme")} <= tiles:
+            fail("iptv/: channels are not the free tiles")
+        counts["iptv programmes"] = sum(1 for _ in tv.iter("programme"))
+    except ET.ParseError as e:
+        fail(f"iptv/ XMLTV pieces: {e}")
 
     size = sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(site) for f in fs)
     print(json.dumps(counts, indent=1))

@@ -33,19 +33,19 @@
   {
    "type": "series",
    "id": "ukx.netflix-top10-shows",
-   "name": "Netflix UK Top 10 Shows",
+   "name": "Netflix - Top 10 series",
    "showInHome": false
   },
   {
    "type": "movie",
    "id": "ukx.netflix-top10-films",
-   "name": "Netflix UK Top 10 Films",
+   "name": "Netflix - Top 10 films",
    "showInHome": false
   },
   {
    "type": "movie",
    "id": "ukx.netflix-popular",
-   "name": "Netflix Most Popular Films",
+   "name": "Netflix - Most popular films",
    "showInHome": false
   },
   {
