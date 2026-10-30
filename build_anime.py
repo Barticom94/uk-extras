@@ -48,6 +48,7 @@ SKIP_TYPES = {"Music", "CM", "PV"}  # clips and adverts, not shows
 PUBLIC_WORDS = re.compile(r"hentai|erotic|ecchi|xxx|porn|nsfw|naughty|playboy|hustler|red ?light|after dark|18\+",
                           re.I)  # not "adult": "Stairway to Adulthood" is fine
 MIN_TITLES = 12000  # MAL entries crawled: 12,951 on 30 Oct 2026. Fewer means Tenrai answered short; keep last week's
+MIN_TT = 4500  # tiles with an IMDb id: 5,108 on 30 Oct 2026. Fewer means Fribb's file changed shape
 
 
 def slug(name):
@@ -96,9 +97,12 @@ def crawl(cache):
 def tile_id(item, row, tt_rows):
     """(id, type) for a MAL entry and its Fribb row (or None). The IMDb id's type is its TMDB key's (movie or tv); with
     no TMDB id, MOVIE is a film and the rest are series. A film filed under its show's TMDB tv id is still a film when
-    its IMDb id is its own (on no other row): as a series it would be a dead tile."""
+    its IMDb id is its own (on no other row): as a series it would be a dead tile. So is a one-off, a one-episode OVA,
+    ONA or special with its own IMDb id: IMDb has those as TV movies, specials or videos (DBZ's History of Trunks)."""
     row = row or {}
-    movie = (row.get("type") or ("MOVIE" if item.get("type") == "Movie" else "")) == "MOVIE"
+    fmt = row.get("type") or (item.get("type") or "").upper().replace("TV SPECIAL", "SPECIAL")  # Fribb's, else MAL's
+    movie = fmt == "MOVIE"
+    one_off = fmt in ("OVA", "ONA", "SPECIAL") and item.get("episodes") == 1
     tmdb = row.get("themoviedb_id") or {}
     tts = [t for t in row.get("imdb_id") or [] if re.fullmatch(r"tt\d+", str(t))]  # some rows hold [""]
     if tts:
@@ -106,7 +110,9 @@ def tile_id(item, row, tt_rows):
         if "movie" in tmdb:
             movie = True
         elif "tv" in tmdb:
-            movie = movie and tt_rows[tt] == 1
+            movie = (movie or one_off) and tt_rows[tt] == 1
+        else:
+            movie = movie or (one_off and tt_rows[tt] == 1)
         return tt, "movie" if movie else "series"
     return (f"kitsu:{row['kitsu_id']}" if row.get("kitsu_id") else f"mal:{item['mal_id']}"), "movie" if movie else "series"
 
@@ -124,6 +130,7 @@ def build_lists(items, fribb):
         if it["mal_id"] in seen:
             continue  # the order shifts a little while the pages are read
         seen.add(it["mal_id"])
+        tid, kind = tile_id(it, rows.get(it["mal_id"]), tt_rows)
         tags = [g for k in ("genres", "explicit_genres", "themes", "demographics") for g in it.get(k) or []]
         poster = (it.get("images") or {}).get("jpg") or {}
         poster = poster.get("large_image_url") or poster.get("image_url")
@@ -137,13 +144,14 @@ def build_lists(items, fribb):
             dropped["no poster"] += 1
         elif PUBLIC_WORDS.search(it.get("title_english") or it["title"]):
             dropped["word in the name"] += 1
+        elif it.get("type") in ("Special", "TV Special") and not tid.startswith("tt"):
+            dropped["special, no IMDb id"] += 1  # recaps and extras beside the show; AIOMetadata's MAL lists skip them too
         else:
-            entries.append((it, {g["name"] for g in tags}, poster))
+            entries.append((it, {g["name"] for g in tags}, poster, tid, kind))
     entries.sort(key=lambda e: -(e[0].get("members") or 0))  # stable: ties keep Tenrai's order
 
     tiles, lists = {}, {s: {} for s in ["all"] + [slug(g) for g in GENRES] + DECADES}  # dicts as ordered sets
-    for it, names, poster in entries:
-        tid, kind = tile_id(it, rows.get(it["mal_id"]), tt_rows)
+    for it, names, poster, tid, kind in entries:
         year = (((it.get("aired") or {}).get("prop") or {}).get("from") or {}).get("year") or it.get("year")
         if tid not in tiles:
             tile = {"id": tid, "type": kind, "name": it.get("title_english") or it["title"], "poster": poster,
@@ -166,11 +174,13 @@ def make_index(lists):
             "decades": [entry(d, d) for d in DECADES]}
 
 
-def problems(lists, unique, total, previous):
-    """Reasons to keep last week's lists: a crawl that came back short, or a list that emptied or halved."""
+def problems(lists, unique, total, previous, tt):
+    """Reasons to keep last week's lists: a crawl that came back short, IMDb ids gone, or a list that emptied or halved."""
     out = []
     if unique < max(MIN_TITLES, 0.99 * total):
         out.append(f"crawled {unique} MAL entries, Tenrai counted {total} (need 99% and {MIN_TITLES}+)")
+    if tt < MIN_TT:
+        out.append(f"{tt} tiles with an IMDb id (need {MIN_TT}+): has Fribb's file changed?")
     before = {x["slug"]: x["count"] for x in [previous["all"]] + previous["genres"] + previous["decades"]} if previous else {}
     if before and len(lists["all"]) < 0.9 * before["all"]:
         out.append(f"all: {len(lists['all'])} tiles, {before['all']} last time")
@@ -205,7 +215,7 @@ def main(out_dir, cache=None):
           f"({tt / max(len(tiles), 1):.0%}), {sum(t.startswith('kitsu:') for t in tiles)} kitsu, "
           f"{sum(t.startswith('mal:') for t in tiles)} mal; {time.time() - start:.0f} s")
     print(" ".join(f"{s} {len(ids)}" for s, ids in lists.items()))
-    bad = problems(lists, unique, total, previous)
+    bad = problems(lists, unique, total, previous, tt)
     if bad:
         print("keeping the last lists:", *bad, sep="\n  ", file=sys.stderr)
         return 1

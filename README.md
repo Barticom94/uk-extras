@@ -69,10 +69,11 @@ serves them as catalogues; this add-on's manifest doesn't list them yet. It:
   and transforming its answers for private use, so only tiles and lists are kept here: no scores, members or synopses;
 - leaves out music videos, adverts and promos (MAL types Music, CM, PV), titles not aired yet, MAL's adult genres and
   Rx rating (Tenrai's SFW filter drops them already) and the few titles whose names hold a word the household keeps
-  out of public text. The SFW filter also drops MAL's R+ rating: 1,071 titles with 1,000+ members on 30 Oct 2026,
-  Code Geass's first season among them;
+  out of public text, and MAL specials (Special, TV Special) with no IMDb id: recaps and extras that would sit beside
+  the show (AIOMetadata's MAL lists leave out every special). The SFW filter also drops MAL's R+ rating: 1,071 titles
+  with 1,000+ members on 30 Oct 2026, Akira, Monster, Perfect Blue and Code Geass's first season among them;
 - gives each title Fribb's IMDb id where there is one, typed by its TMDB id (movie or tv; with none, a MOVIE is a film
-  and the rest are series; a MOVIE under its show's TMDB tv id is still a film when the IMDb id is its own), else
+  and the rest are series; a MOVIE, or a one-episode OVA, ONA or special, is a film when the IMDb id is its own), else
   `kitsu:<id>`, else `mal:<id>`. Seasons that share an IMDb id are one tile, with the name, poster and year of the
   season that has most members;
 - puts a title in a genre when MAL gives it that genre, theme or demographic (76 of them, A to Z), and in the decade
@@ -82,12 +83,13 @@ serves them as catalogues; this add-on's manifest doesn't list them yet. It:
   `count` and `pages`) and `public/anime/<slug>/<n>.json`: items 50n to 50n+49 of that list as `{"metas": [...]}`,
   each with `id`, `type`, `name`, `poster` (MAL's large picture), `releaseInfo` (the year) and MAL's `genres`;
 - keeps last week's lists (exits 1, writes nothing) after a short crawl: under 12,000 entries or 99% of Tenrai's own
-  count, an empty list, a decade under 20, all under 90% of last week's or a list under half of last week's.
+  count, under 4,500 tiles with an IMDb id (Fribb's file changed), an empty list, a decade under 20, all under 90% of
+  last week's or a list under half of last week's.
 
 `anime.yml` runs it when dispatched (GitHub's schedule doesn't fire here, see below), commits `public/anime` if it
 changed and starts `free-channels.yml`, which deploys it with the rest. Dispatch it apart from `netflix.yml`: both push
-to `main`. The first run, from a home line on 30 Oct 2026, took 151 s: 12,951 entries, 9,918 tiles, 52% with an IMDb
-id (954 of the top 1,000).
+to `main`. The first crawl, from a home line on 30 Oct 2026, took 151 s: 12,951 entries, which these rules make 8,473
+tiles, 60% with an IMDb id (970 of the top 1,000).
 
 ## Run it locally
 

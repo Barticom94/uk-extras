@@ -91,13 +91,19 @@ fribb = [{"mal_id": 1, "type": "TV", "imdb_id": ["tt1"], "themoviedb_id": {"tv":
          {"mal_id": 4, "type": "MOVIE", "imdb_id": ["tt1"], "themoviedb_id": {"tv": 10}},  # film filed as the show
          {"mal_id": 5, "type": "MOVIE", "imdb_id": ["tt5", "tt55"]},
          {"mal_id": 6, "type": "OVA", "imdb_id": ["tt6"], "themoviedb_id": {"movie": [60]}},
-         {"mal_id": 7, "type": "OVA", "imdb_id": [""], "kitsu_id": 77}]  # Fribb has a few empty ids
+         {"mal_id": 7, "type": "OVA", "imdb_id": [""], "kitsu_id": 77},  # Fribb has a few empty ids
+         {"mal_id": 20, "type": "SPECIAL", "imdb_id": ["tt20"], "themoviedb_id": {"tv": 10}},  # TV special, own tt
+         {"mal_id": 21, "type": "SPECIAL", "imdb_id": ["tt1"], "themoviedb_id": {"tv": 10}},   # special filed as the show
+         {"mal_id": 22, "imdb_id": ["tt22"]}]  # no type, no TMDB id: MAL's type counts
 rows = {r["mal_id"]: r for r in fribb}
 tt_rows = collections.Counter(tt for r in fribb for tt in r.get("imdb_id") or [])
 ids = {m: tile_id({"mal_id": m, "type": "TV"}, rows.get(m), tt_rows) for m in (1, 2, 3, 4, 5, 6, 7, 8)}
 assert ids == {1: ("tt1", "series"), 2: ("tt1", "series"), 3: ("tt3", "movie"), 4: ("tt1", "series"),
                5: ("tt5", "movie"), 6: ("tt6", "movie"), 7: ("kitsu:77", "series"), 8: ("mal:8", "series")}, ids
 assert tile_id({"mal_id": 9, "type": "Movie"}, None, tt_rows) == ("mal:9", "movie")
+one = lambda mal, eps, kind="Special": tile_id({"mal_id": mal, "type": kind, "episodes": eps}, rows.get(mal), tt_rows)
+assert one(20, 1) == ("tt20", "movie") and one(20, 3) == ("tt20", "series"), "a one-off is a film, a run of specials isn't"
+assert one(21, 1) == ("tt1", "series") and one(22, 1, "TV Special") == ("tt22", "movie") and one(22, 1, "TV") == ("tt22", "series")
 
 
 def anime(mal, members, aired=2010, kind="TV", genres=(), themes=(), **more):
@@ -111,21 +117,24 @@ items = [anime(2, 500, 2012, genres=["Action"], title_english="Show Season 2"), 
          anime(1, 900, 2009, genres=["Action", "Ecchi"], themes=["School"], title_english="Show"),
          anime(1, 900, 2009), anime(3, 800, 2015, "Movie", genres=["Romance"]), anime(8, 700, kind="Music"),
          anime(9, 650, status="Not yet aired"), anime(10, 600, genres=["adult"]),
-         anime(11, 550, None, year=1995), anime(12, 540, 1950), anime(13, 530, title_english="xxxHOLiC")]
+         anime(11, 550, None, year=1995), anime(12, 540, 1950), anime(13, 530, title_english="xxxHOLiC"),
+         anime(14, 520, kind="Special"), anime(20, 510, 1985, "TV Special", episodes=1)]  # a recap; a TV special
 tiles, lists, dropped, unique = build_lists(items, fribb)
 assert tiles["tt1"] == {"id": "tt1", "type": "series", "name": "Show", "poster": "https://x/1l.jpg", "releaseInfo": "2009",
                         "genres": ["Action"]}, tiles["tt1"]
-assert tiles["tt3"]["type"] == "movie" and tiles["tt3"]["name"] == "T3" and set(tiles) == {"tt1", "tt3", "mal:11", "mal:12"}
-assert lists["all"] == ["tt1", "tt3", "mal:11", "mal:12"] and lists["action"] == ["tt1"] == lists["ecchi"] == lists["school"]
+assert tiles["tt3"]["type"] == "movie" and tiles["tt3"]["name"] == "T3" and set(tiles) == {"tt1", "tt3", "mal:11", "mal:12", "tt20"}
+assert lists["all"] == ["tt1", "tt3", "mal:11", "mal:12", "tt20"] and lists["action"] == ["tt1"] == lists["ecchi"] == lists["school"]
 assert lists["2000s"] == ["tt1"] and lists["2010s"] == ["tt3", "tt1"], "season 2 puts the show in the 2010s at its own rank"
 assert lists["1990s"] == ["mal:11"] and not any("mal:12" in lists[d] for d in DECADES)
-assert dropped == {"music, CM, PV": 1, "not yet aired": 1, "adult": 1, "word in the name": 1} and unique == 9
+assert dropped == {"music, CM, PV": 1, "not yet aired": 1, "adult": 1, "word in the name": 1, "special, no IMDb id": 1}
+assert unique == 11 and tiles["tt20"]["type"] == "movie" and lists["1980s"] == ["tt20"]
 
 assert [len(p) for p in pages(list(range(120)))] == [50, 50, 20] and len(pages(list(range(100)))) == 2 and pages([]) == []
 assert slug("Idols (Female)") == "idols-female" and slug("Sci-Fi") == "sci-fi" and len({slug(g) for g in GENRES}) == len(GENRES) == 76
 ok = {s: list(range(30)) for s in ["all"] + [slug(g) for g in GENRES] + DECADES}
 assert make_index(ok)["genres"][0] == {"name": "Action", "slug": "action", "count": 30, "pages": 1}
-assert problems(ok, 13000, 12951, None) == [] and problems(ok, 12900, 13100, None) != []  # under 99% of Tenrai's count
-assert problems(ok, 11000, 11000, None) != [] and problems(ok | {"1960s": [1]}, 13000, 13000, None) == ["1960s: only 1"]
-assert problems(ok, 13000, 13000, make_index(ok | {"action": list(range(100))})) == ["action: 30, under half of 100 last time"]
+assert problems(ok, 13000, 12951, None, 5000) == [] and problems(ok, 12900, 13100, None, 5000) != []  # under 99%
+assert problems(ok, 11000, 11000, None, 5000) != [] and problems(ok | {"1960s": [1]}, 13000, 13000, None, 5000) == ["1960s: only 1"]
+assert problems(ok, 13000, 13000, make_index(ok | {"action": list(range(100))}), 5000) == ["action: 30, under half of 100 last time"]
+assert problems(ok, 13000, 13000, None, 0) != [], "Fribb loaded but mapped nothing: keep last week's IMDb ids"
 print("ok")
