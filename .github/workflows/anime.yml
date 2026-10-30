@@ -32,5 +32,6 @@ jobs:
           if git diff --cached --quiet; then echo "Lists unchanged"; exit 0; fi
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -m "Anime lists for $(date -u +%F)"
+          git pull --rebase origin main  # something else may have pushed since the checkout; this run only adds public/anime
           git push
           gh workflow run free-channels.yml --ref main

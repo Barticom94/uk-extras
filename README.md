@@ -62,16 +62,17 @@ If one is wrong or missing, add it to `netflix_overrides.json` (`null` leaves a 
 Jikan-style MAL API), with ids from [Fribb/anime-lists](https://github.com/Fribb/anime-lists). The household add-on
 serves them as catalogues; this add-on's manifest doesn't list them yet. It:
 
-- reads Tenrai's SFW anime with 1,000+ MAL members once a week, most members first (`sfw=true&min_members=1000`,
-  about 130 pages of 100), one request a second (half Tenrai's public limit) as
+- reads Tenrai's anime with 1,000+ MAL members once a week, most members first: the SFW ones
+  (`sfw=true&min_members=1000`, about 130 pages of 100), then MAL's R+ (mild nudity) ones (`rating=r`, about 11 pages),
+  which the SFW filter drops along with Rx (everyone in the household is an adult). One request a second (half Tenrai's public limit) as
   `uk-extras anime lists (github.com/Barticom94/uk-extras)`. A 429 waits for its `Retry-After`; a 5xx or timeout is
   tried again after 5, 15 and 45 s, then the run fails. Tenrai's terms (tenrai.org/terms, 4 July 2026) allow caching
   and transforming its answers for private use, so only tiles and lists are kept here: no scores, members or synopses;
 - leaves out music videos, adverts and promos (MAL types Music, CM, PV), titles not aired yet, MAL's adult genres and
   Rx rating (Tenrai's SFW filter drops them already) and the few titles whose names hold a word the household keeps
   out of public text, and MAL specials (Special, TV Special) with no IMDb id: recaps and extras that would sit beside
-  the show (AIOMetadata's MAL lists leave out every special). The SFW filter also drops MAL's R+ rating: 1,071 titles
-  with 1,000+ members on 30 Oct 2026, Akira, Monster, Perfect Blue and Code Geass's first season among them;
+  the show (AIOMetadata's MAL lists leave out every special). The R+ query is what brings in Akira, Monster, Perfect
+  Blue and Code Geass's first season (1,071 R+ titles with 1,000+ members on 30 Oct 2026);
 - gives each title Fribb's IMDb id where there is one, typed by its TMDB id (movie or tv; with none, a MOVIE is a film
   and the rest are series; a MOVIE, or a one-episode OVA, ONA or special, is a film when the IMDb id is its own), else
   `kitsu:<id>`, else `mal:<id>`. Seasons that share an IMDb id are one tile, with the name, poster and year of the

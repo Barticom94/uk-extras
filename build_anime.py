@@ -6,7 +6,7 @@ inside the repo, keeps the downloads and reuses them next time, for working on t
 out_dir/anime/index.json lists the genres (A to Z, the picker's order), the decades and "all", each with its slug,
 count and pages; out_dir/anime/<slug>/<n>.json holds items 50n to 50n+49 of that list as {"metas": [...]}.
 
-One pass over Tenrai's SFW anime with 1,000+ MAL members, one request a second (half its public limit; tenrai.org/terms
+One pass over Tenrai's SFW anime with 1,000+ MAL members, then its R+ (mild nudity) ones, one request a second (half its public limit; tenrai.org/terms
 allows caching and transforming for private use). Ids come from Fribb's anime-lists: the IMDb id with the right type
 where there is one, else kitsu:<id>, else mal:<id>. Seasons that share an IMDb id are one tile, which keeps the best
 ranked season's name, poster and year. Only these tiles and the lists are written: no scores, members or synopses.
@@ -24,7 +24,11 @@ import urllib.error
 import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-TENRAI = "https://api.tenrai.org/v1/anime?sfw=true&min_members=1000&order_by=members&sort=desc&limit=100&page={page}"
+TENRAI = "https://api.tenrai.org/v1/anime?{query}&min_members=1000&order_by=members&sort=desc&limit=100&page={page}"
+# Tenrai's SFW filter drops MAL's R+ (mild nudity) with its Rx, and with it Akira, Monster, Perfect Blue and most of
+# Ecchi, so R+ comes in through a second query (everyone in the household is an adult; Adam, 30 Oct 2026). Rx and the
+# two adult genres stay out either way (build_lists).
+QUERIES = {"tenrai": "sfw=true", "tenrai-rplus": "rating=r"}  # cache file prefix: query
 FRIBB = "https://raw.githubusercontent.com/Fribb/anime-lists/master/anime-list-full.json"
 PAGE = 50
 # MAL's 18 genres, its themes and demographics, A to Z as AIOMetadata sorts its MAL genre picker. The public picker
@@ -41,7 +45,7 @@ GENRES = [
     "Time Travel", "Urban Fantasy", "Vampire", "Video Game", "Villainess", "Visual Arts", "Workplace",
 ]
 DECADES = [f"{d}s" for d in range(1960, 2030, 10)]  # before 1960 too little has 1,000+ members
-ADULT_GENRE_IDS = {12, 49}  # MAL's two adult genres: Tenrai's SFW filter drops them; so does this, to be sure
+ADULT_GENRE_IDS = {12, 49}  # MAL's two adult genres, Hentai and Erotica: the R+ query can return Erotica
 SKIP_TYPES = {"Music", "CM", "PV"}  # clips and adverts, not shows
 # Words the household keeps out of public text (validate.py here, check.py in the collections repo). A few SFW titles
 # have one in their name (xxxHOLiC): those are left out.
@@ -83,14 +87,18 @@ def get(url, cache_file=None):
 
 
 def crawl(cache):
-    """(every item on every page, the total Tenrai counted on page 1)."""
-    items, page, last, total = [], 1, 1, 0
-    while page <= last:
-        d = json.loads(get(TENRAI.format(page=page), cache and os.path.join(cache, f"tenrai-{page:03}.json")))
-        if page == 1:
-            last, total = d["pagination"]["last_visible_page"], d["pagination"]["items"]["total"]
-        items += d["data"]
-        page += 1
+    """(every item on every page of both queries, the totals Tenrai counted on their first pages)."""
+    items, total = [], 0
+    for prefix, query in QUERIES.items():
+        page, last = 1, 1
+        while page <= last:
+            d = json.loads(get(TENRAI.format(query=query, page=page),
+                               cache and os.path.join(cache, f"{prefix}-{page:03}.json")))
+            if page == 1:
+                last = d["pagination"]["last_visible_page"]
+                total += d["pagination"]["items"]["total"]
+            items += d["data"]
+            page += 1
     return items, total
 
 
