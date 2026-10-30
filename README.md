@@ -56,9 +56,43 @@ and matches each title on IMDb's search suggestions: same title, same kind, alre
 of those on IMDb that week. `netflix_matches.txt` shows how each title was matched.
 If one is wrong or missing, add it to `netflix_overrides.json` (`null` leaves a title out).
 
+## Anime lists
+
+`build_anime.py` builds anime by genre and by decade from MyAnimeList via [Tenrai](https://tenrai.org) (a
+Jikan-style MAL API), with ids from [Fribb/anime-lists](https://github.com/Fribb/anime-lists). The household add-on
+serves them as catalogues; this add-on's manifest doesn't list them yet. It:
+
+- reads Tenrai's SFW anime with 1,000+ MAL members once a week, most members first (`sfw=true&min_members=1000`,
+  about 130 pages of 100), one request a second (half Tenrai's public limit) as
+  `uk-extras anime lists (github.com/Barticom94/uk-extras)`. A 429 waits for its `Retry-After`; a 5xx or timeout is
+  tried again after 5, 15 and 45 s, then the run fails. Tenrai's terms (tenrai.org/terms, 4 July 2026) allow caching
+  and transforming its answers for private use, so only tiles and lists are kept here: no scores, members or synopses;
+- leaves out music videos, adverts and promos (MAL types Music, CM, PV), titles not aired yet, MAL's adult genres and
+  Rx rating (Tenrai's SFW filter drops them already) and the few titles whose names hold a word the household keeps
+  out of public text. The SFW filter also drops MAL's R+ rating: 1,071 titles with 1,000+ members on 30 Oct 2026,
+  Code Geass's first season among them;
+- gives each title Fribb's IMDb id where there is one, typed by its TMDB id (movie or tv; with none, a MOVIE is a film
+  and the rest are series; a MOVIE under its show's TMDB tv id is still a film when the IMDb id is its own), else
+  `kitsu:<id>`, else `mal:<id>`. Seasons that share an IMDb id are one tile, with the name, poster and year of the
+  season that has most members;
+- puts a title in a genre when MAL gives it that genre, theme or demographic (76 of them, A to Z), and in the decade
+  it started airing (1960s to 2020s). `all` holds every tile. Each list runs in MAL members order and holds a tile
+  once, at its best season's place, so a later season can put a show in a later decade too;
+- writes `public/anime/index.json` (`pageSize` 50, then `all`, `genres` and `decades`, each with `name`, `slug`,
+  `count` and `pages`) and `public/anime/<slug>/<n>.json`: items 50n to 50n+49 of that list as `{"metas": [...]}`,
+  each with `id`, `type`, `name`, `poster` (MAL's large picture), `releaseInfo` (the year) and MAL's `genres`;
+- keeps last week's lists (exits 1, writes nothing) after a short crawl: under 12,000 entries or 99% of Tenrai's own
+  count, an empty list, a decade under 20, all under 90% of last week's or a list under half of last week's.
+
+`anime.yml` runs it when dispatched (GitHub's schedule doesn't fire here, see below), commits `public/anime` if it
+changed and starts `free-channels.yml`, which deploys it with the rest. Dispatch it apart from `netflix.yml`: both push
+to `main`. The first run, from a home line on 30 Oct 2026, took 151 s: 12,951 entries, 9,918 tiles, 52% with an IMDb
+id (954 of the top 1,000).
+
 ## Run it locally
 
     python -I build_netflix.py          # writes public/catalog/... and netflix_matches.txt
+    python -I build_anime.py out cache  # one Tenrai crawl into out/anime/ (default public/); cache/ keeps the downloads
     python -I build_channels.py _site   # copies public/ into _site and adds the free channels
     python -I validate.py _site         # follows Nuvio's URLs: every tile has its meta and streams
     python -I test_build.py             # offline checks: UK time, merging, genres

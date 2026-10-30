@@ -1,0 +1,36 @@
+name: Anime lists
+
+# MyAnimeList's anime by genre and by decade, via Tenrai: one crawl a week at one request a second. GitHub's own
+# schedule never fires in this repo, so this runs when dispatched (the household add-on's cron, or by hand).
+# Commits public/anime only if it changed, then redeploys the site; a short crawl fails the build and keeps last week's.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: anime
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Self-test
+        run: python3 -I test_build.py
+      - name: Build the anime lists
+        run: python3 -I build_anime.py
+      - name: Commit and redeploy if they changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add public/anime
+          if git diff --cached --quiet; then echo "Lists unchanged"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Anime lists for $(date -u +%F)"
+          git push
+          gh workflow run free-channels.yml --ref main

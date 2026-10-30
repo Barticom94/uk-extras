@@ -80,4 +80,52 @@ with tempfile.TemporaryDirectory() as out:
            for p in tv.iter("programme")]
     assert got == [("ukx:ent1", "Fallback guide", None, False), ("ukx:news1", "A <b> & c", "Desc & more", "https://x/i.png?a=1&b=2")], got
     assert next(tv.iter("programme")).get("start") == "20261029210000 +0000"
+
+# Anime: MAL entry -> id and type from Fribb's rows, merged seasons, list order, decades, pages and the sanity gate.
+import collections
+from build_anime import DECADES, GENRES, build_lists, make_index, pages, problems, slug, tile_id
+
+fribb = [{"mal_id": 1, "type": "TV", "imdb_id": ["tt1"], "themoviedb_id": {"tv": 10}},
+         {"mal_id": 2, "type": "TV", "imdb_id": ["tt1"], "themoviedb_id": {"tv": 10}},     # season 2: same show
+         {"mal_id": 3, "type": "MOVIE", "imdb_id": ["tt3"], "themoviedb_id": {"tv": 10}},  # film with its own tt
+         {"mal_id": 4, "type": "MOVIE", "imdb_id": ["tt1"], "themoviedb_id": {"tv": 10}},  # film filed as the show
+         {"mal_id": 5, "type": "MOVIE", "imdb_id": ["tt5", "tt55"]},
+         {"mal_id": 6, "type": "OVA", "imdb_id": ["tt6"], "themoviedb_id": {"movie": [60]}},
+         {"mal_id": 7, "type": "OVA", "imdb_id": [""], "kitsu_id": 77}]  # Fribb has a few empty ids
+rows = {r["mal_id"]: r for r in fribb}
+tt_rows = collections.Counter(tt for r in fribb for tt in r.get("imdb_id") or [])
+ids = {m: tile_id({"mal_id": m, "type": "TV"}, rows.get(m), tt_rows) for m in (1, 2, 3, 4, 5, 6, 7, 8)}
+assert ids == {1: ("tt1", "series"), 2: ("tt1", "series"), 3: ("tt3", "movie"), 4: ("tt1", "series"),
+               5: ("tt5", "movie"), 6: ("tt6", "movie"), 7: ("kitsu:77", "series"), 8: ("mal:8", "series")}, ids
+assert tile_id({"mal_id": 9, "type": "Movie"}, None, tt_rows) == ("mal:9", "movie")
+
+
+def anime(mal, members, aired=2010, kind="TV", genres=(), themes=(), **more):
+    tags = lambda names: [{"mal_id": 12 if n == "adult" else 0, "name": n} for n in names]
+    return {"mal_id": mal, "members": members, "type": kind, "status": "Finished Airing", "title": f"T{mal}",
+            "images": {"jpg": {"large_image_url": f"https://x/{mal}l.jpg"}}, "aired": {"prop": {"from": {"year": aired}}},
+            "genres": tags(genres), "themes": tags(themes)} | more
+
+
+items = [anime(2, 500, 2012, genres=["Action"], title_english="Show Season 2"),  # out of order, as a crawl can be
+         anime(1, 900, 2009, genres=["Action", "Ecchi"], themes=["School"], title_english="Show"),
+         anime(1, 900, 2009), anime(3, 800, 2015, "Movie", genres=["Romance"]), anime(8, 700, kind="Music"),
+         anime(9, 650, status="Not yet aired"), anime(10, 600, genres=["adult"]),
+         anime(11, 550, None, year=1995), anime(12, 540, 1950), anime(13, 530, title_english="xxxHOLiC")]
+tiles, lists, dropped, unique = build_lists(items, fribb)
+assert tiles["tt1"] == {"id": "tt1", "type": "series", "name": "Show", "poster": "https://x/1l.jpg", "releaseInfo": "2009",
+                        "genres": ["Action"]}, tiles["tt1"]
+assert tiles["tt3"]["type"] == "movie" and tiles["tt3"]["name"] == "T3" and set(tiles) == {"tt1", "tt3", "mal:11", "mal:12"}
+assert lists["all"] == ["tt1", "tt3", "mal:11", "mal:12"] and lists["action"] == ["tt1"] == lists["ecchi"] == lists["school"]
+assert lists["2000s"] == ["tt1"] and lists["2010s"] == ["tt3", "tt1"], "season 2 puts the show in the 2010s at its own rank"
+assert lists["1990s"] == ["mal:11"] and not any("mal:12" in lists[d] for d in DECADES)
+assert dropped == {"music, CM, PV": 1, "not yet aired": 1, "adult": 1, "word in the name": 1} and unique == 9
+
+assert [len(p) for p in pages(list(range(120)))] == [50, 50, 20] and len(pages(list(range(100)))) == 2 and pages([]) == []
+assert slug("Idols (Female)") == "idols-female" and slug("Sci-Fi") == "sci-fi" and len({slug(g) for g in GENRES}) == len(GENRES) == 76
+ok = {s: list(range(30)) for s in ["all"] + [slug(g) for g in GENRES] + DECADES}
+assert make_index(ok)["genres"][0] == {"name": "Action", "slug": "action", "count": 30, "pages": 1}
+assert problems(ok, 13000, 12951, None) == [] and problems(ok, 12900, 13100, None) != []  # under 99% of Tenrai's count
+assert problems(ok, 11000, 11000, None) != [] and problems(ok | {"1960s": [1]}, 13000, 13000, None) == ["1960s: only 1"]
+assert problems(ok, 13000, 13000, make_index(ok | {"action": list(range(100))})) == ["action: 30, under half of 100 last time"]
 print("ok")
