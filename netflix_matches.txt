@@ -1,42 +1,42 @@
 # How each Netflix title was matched. Wrong or missing? Add it to netflix_overrides.json.
-2026-10-18 Films  1 Animals                                    tt31049299  override
-2026-10-18 TV     1 Below                                      tt35934755  override
-2026-10-18 Films  2 Wicked                                     tt1262426   2024, IMDb rank 951
-2026-10-18 TV     2 TYSON                                      tt35051210  2026, IMDb rank 742
-2026-10-18 Films  3 Within                                     tt3612320   2016, IMDb rank 408 (beat tt0451262 2005, rank 35333)
-2026-10-18 TV     3 East of Eden                               tt21097264  2026, IMDb rank 12 (beat tt0083409 1981, rank 2527)
-2026-10-18 Films  4 Doing Life                                 tt36429458  2026, IMDb rank 613 (beat tt0090954 1986, rank 37757)
-2026-10-18 TV     4 The Diplomat                               tt17491088  2023, IMDb rank 11 (beat tt17001504 2023, rank 2563)
-2026-10-18 Films  5 The Widower: 'Til Death Do Us Part         tt44568097  2026, IMDb rank 3552
-2026-10-18 TV     5 Instadocs: AI Gone Wild                    tt48437216  2026, IMDb rank 4632
-2026-10-18 Films  6 UNABOMBER                                  tt6933238   2026, IMDb rank 69 (beat tt30149757 2022, rank 46612)
-2026-10-18 TV     6 The Gentlemen                              tt13210838  2024, IMDb rank 38
-2026-10-18 Films  7 Kraven the Hunter                          tt8790086   2024, IMDb rank 1009
-2026-10-18 TV     7 Spike                                      -           NO MATCH on IMDb: add an override
-2026-10-18 Films  8 Brooklyn                                   tt2381111   2015, IMDb rank 1596
-2026-10-18 TV     8 Unforgettable                              tt1842530   2011, IMDb rank 162 (beat tt6369678 2009, rank 89441)
-2026-10-18 Films  9 Ice Age: Collision Course                  tt3416828   2016, IMDb rank 2061
-2026-10-18 TV     9 Love Life                                  tt10380768  2020, IMDb rank 13324 (beat tt2297703 2012, rank 31723)
-2026-10-18 Films 10 White Chicks                               tt0381707   2004, IMDb rank 755
-2026-10-18 TV    10 Haunted Hotel                              tt32499579  2025, IMDb rank 201
-popular (English)     KPop Demon Hunters                         tt14205554  2025, IMDb rank 1020
-popular (English)     Red Notice                                 tt7991608   2021, IMDb rank 2760
-popular (English)     Carry-On                                   tt21382296  2024, IMDb rank 2026
-popular (English)     Don't Look Up                              tt11286314  2021, IMDb rank 1084
-popular (English)     The Adam Project                           tt2463208   2022, IMDb rank 2333
-popular (English)     Bird Box                                   tt2737304   2018, IMDb rank 2953
-popular (English)     Back in Action                             tt21191806  2025, IMDb rank 4264
-popular (English)     Swapped                                    tt29552248  2026, IMDb rank 2100 (beat tt19871860 2020, rank 194944)
-popular (English)     Leave the World Behind                     tt12747748  2023, IMDb rank 1149
-popular (English)     War Machine                                tt15940132  2026, IMDb rank 513
-popular (Non-English) Troll                                      tt11116912  2022, IMDb rank 7999
-popular (Non-English) Under Paris                                tt13964390  2024, IMDb rank 12050
-popular (Non-English) Society of the Snow                        tt16277242  2023, IMDb rank 2307
-popular (Non-English) Exterritorial                              tt30876483  2025, IMDb rank 12039
-popular (Non-English) The Great Flood                            tt29927663  2025, IMDb rank 7802
-popular (Non-English) Nowhere                                    tt15789472  2023, IMDb rank 6420
-popular (Non-English) The Platform                               tt8228288   2019, IMDb rank 2427 (beat tt9861264 2025, rank 216191)
+2026-11-01 Films  1 Greenfingers                               tt0203540   2000, IMDb rank 635
+2026-11-01 TV     1 The One About Matthew Perry                tt44941753  2026, IMDb rank 248
+2026-11-01 Films  2 Surviving Hurricane Otis                   tt37961714  2026, IMDb rank 290
+2026-11-01 TV     2 Beat Luke Littler                          tt43716819  2026, IMDb rank 11103
+2026-11-01 Films  3 Animals                                    tt31049299  override
+2026-11-01 TV     3 Nobody Wants This                          tt26933824  2024, IMDb rank 24
+2026-11-01 Films  4 Collision Course                           tt38793125  2026, IMDb rank 29 (beat tt0097081 1989, rank 23780)
+2026-11-01 TV     4 Lupin                                      tt2531336   2021, IMDb rank 31 (beat tt1018841 2007, rank 35076)
+2026-11-01 Films  5 Despicable Me 4                            tt7510222   2024, IMDb rank 4311
+2026-11-01 TV     5 The Diplomat                               tt17491088  2023, IMDb rank 22 (beat tt17001504 2023, rank 6525)
+2026-11-01 Films  6 Hot Wheels Let's Race: Attack of the T-Rex tt49317723  2026, IMDb rank 31607
+2026-11-01 TV     6 Below                                      tt35934755  override
+2026-11-01 Films  7 It Chapter Two                             tt7349950   2019, IMDb rank 430
+2026-11-01 TV     7 Ghosts                                     tt11379026  2021, IMDb rank 49 (beat tt8594324 2019, rank 296)
+2026-11-01 Films  8 KPop Demon Hunters                         tt14205554  2025, IMDb rank 1109
+2026-11-01 TV     8 Minimum Wage                               tt42220724  2026, IMDb rank 61 (beat tt34127005 2024, rank 473)
+2026-11-01 Films  9 Shrek                                      tt0126029   2001, IMDb rank 1294
+2026-11-01 TV     9 The Fall of El Mayo                        tt49250618  2026, IMDb rank 929
+2026-11-01 Films 10 Halloween                                  tt0077651   1978, IMDb rank 17 (beat tt1502407 2018, rank 81)
+2026-11-01 TV    10 The New Stanford Prison Experiment         tt46658083  2026, IMDb rank 1302
+popular (English)     KPop Demon Hunters                         tt14205554  2025, IMDb rank 1109
+popular (English)     Red Notice                                 tt7991608   2021, IMDb rank 3404
+popular (English)     Carry-On                                   tt21382296  2024, IMDb rank 2434
+popular (English)     Don't Look Up                              tt11286314  2021, IMDb rank 1332
+popular (English)     The Adam Project                           tt2463208   2022, IMDb rank 3073
+popular (English)     Bird Box                                   tt2737304   2018, IMDb rank 1819
+popular (English)     Back in Action                             tt21191806  2025, IMDb rank 4321
+popular (English)     Swapped                                    tt29552248  2026, IMDb rank 2406 (beat tt19871860 2020, rank 317740)
+popular (English)     Leave the World Behind                     tt12747748  2023, IMDb rank 1074
+popular (English)     War Machine                                tt15940132  2026, IMDb rank 653
+popular (Non-English) Troll                                      tt11116912  2022, IMDb rank 9177
+popular (Non-English) Under Paris                                tt13964390  2024, IMDb rank 9946
+popular (Non-English) Society of the Snow                        tt16277242  2023, IMDb rank 2398
+popular (Non-English) Exterritorial                              tt30876483  2025, IMDb rank 10160
+popular (Non-English) The Great Flood                            tt29927663  2025, IMDb rank 6162
+popular (Non-English) Nowhere                                    tt15789472  2023, IMDb rank 6747
+popular (Non-English) The Platform                               tt8228288   2019, IMDb rank 2435 (beat tt9861264 2025, rank 220639)
 popular (Non-English) Counterattack                              tt23648788  override
-popular (Non-English) Ad Vitam                                   tt32138452  2025, IMDb rank 13226
-popular (Non-English) Brick                                      tt31806049  2025, IMDb rank 6671
-week 2026-10-18: 10 films, 9 shows, 20 most popular films
+popular (Non-English) Ad Vitam                                   tt32138452  2025, IMDb rank 16584
+popular (Non-English) Brick                                      tt31806049  2025, IMDb rank 6205
+week 2026-11-01: 10 films, 10 shows, 20 most popular films
