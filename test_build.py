@@ -137,4 +137,52 @@ assert problems(ok, 13000, 12951, None, 5000) == [] and problems(ok, 12900, 1310
 assert problems(ok, 11000, 11000, None, 5000) != [] and problems(ok | {"1960s": [1]}, 13000, 13000, None, 5000) == ["1960s: only 1"]
 assert problems(ok, 13000, 13000, make_index(ok | {"action": list(range(100))}), 5000) == ["action: 30, under half of 100 last time"]
 assert problems(ok, 13000, 13000, None, 0) != [], "Fribb loaded but mapped nothing: keep last week's IMDb ids"
+
+# Downloads: a 5xx, 429 or dropped connection is retried, then Unreachable (the run skips, exit 75); a 4xx fails at once.
+import email.message
+import http.client
+import time
+import urllib.error
+import urllib.request
+import build_anime
+import build_channels
+import build_netflix
+
+
+class Body:
+    __enter__ = lambda self: self
+    __exit__ = lambda self, *a: None
+    read = lambda self: b"ok"
+
+
+def answers(*them):
+    """A stand-in urlopen giving these in turn: an HTTP status to raise, an exception to raise, or None for b"ok"."""
+    left = list(them)
+
+    def urlopen(req, timeout):
+        a = left.pop(0)
+        if isinstance(a, int):
+            raise urllib.error.HTTPError(req.full_url, a, "", email.message.Message(), None)
+        if a is not None:
+            raise a
+        return Body()
+    return urlopen
+
+
+real = urllib.request.urlopen, time.sleep
+time.sleep = lambda s: None
+try:
+    for mod, get, tries in ((build_channels, build_channels.fetch, 3), (build_netflix, build_netflix.fetch, 3),
+                            (build_anime, build_anime.get, 4)):
+        urllib.request.urlopen = answers(503, http.client.IncompleteRead(b""), None)
+        assert get("https://x/") == b"ok", mod.__name__
+        for fail, raised in ((answers(*[504] * tries), mod.Unreachable), (answers(404), urllib.error.HTTPError)):
+            urllib.request.urlopen = fail
+            try:
+                get("https://x/")
+                raise AssertionError(f"{mod.__name__}: no exception")
+            except raised:
+                pass
+finally:
+    urllib.request.urlopen, time.sleep = real
 print("ok")

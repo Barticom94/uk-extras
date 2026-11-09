@@ -59,6 +59,10 @@ def slug(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")  # "Idols (Female)" -> "idols-female"
 
 
+class Unreachable(Exception):
+    """Tenrai or GitHub still failing after the retries (a 5xx, 429, timeout or dropped connection): keep last week's."""
+
+
 def get(url, cache_file=None):
     if cache_file and os.path.exists(cache_file):
         with open(cache_file, "rb") as f:
@@ -71,14 +75,16 @@ def get(url, cache_file=None):
                 body = r.read()
             break
         except urllib.error.HTTPError as e:
-            if wait is None or (e.code != 429 and e.code < 500):
-                raise
+            if e.code != 429 and e.code < 500:
+                raise  # a 404 or 403 won't fix itself: fail the build
+            if wait is None:
+                raise Unreachable(f"{url}: {e}") from e
             if e.code == 429:  # over Tenrai's limit: wait as long as it says
                 after = e.headers.get("Retry-After", "")
                 wait = max(wait, int(after) if after.isdigit() else 60)
-        except (OSError, http.client.HTTPException):
+        except (OSError, http.client.HTTPException) as e:
             if wait is None:
-                raise
+                raise Unreachable(f"{url}: {e}") from e
         time.sleep(wait)
     if cache_file:
         with open(cache_file, "wb") as f:
@@ -240,4 +246,8 @@ def main(out_dir, cache=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "public"), sys.argv[2] if len(sys.argv) > 2 else None))
+    try:
+        sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "public"), sys.argv[2] if len(sys.argv) > 2 else None))
+    except Unreachable as e:
+        print(f"::warning::{e}; keeping last week's lists, next week's run tries again")
+        sys.exit(75)  # try again later: the workflow passes and commits nothing

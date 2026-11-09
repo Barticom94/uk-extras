@@ -6,13 +6,16 @@ Standard library only. Runs hourly in GitHub Actions; nothing it downloads is co
 """
 import datetime as dt
 import gzip
+import http.client
 import io
 import json
 import os
 import re
 import shutil
 import sys
+import time
 import unicodedata
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape, quoteattr
@@ -74,10 +77,25 @@ OTHER_LANGUAGE = re.compile(
     r"|deutsch|français|italiano|portuguese|pitufo|tv5monde|lucha plus|billboard espa", re.I)
 
 
+class Unreachable(Exception):
+    """i.mjh.nz still failing after the retries (a 5xx, 429, timeout or dropped connection): skip this build."""
+
+
 def fetch(url):
     req = urllib.request.Request(url, headers={"User-Agent": "uk-extras-build (github.com/Barticom94/uk-extras)"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return r.read()
+    for wait in (20, 60, None):  # i.mjh.nz answers 503/504 now and then, sometimes for over an hour
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code < 500 and e.code != 429:
+                raise  # a 404 or 403 won't fix itself: fail the build
+            err = e
+        except (OSError, http.client.HTTPException) as e:
+            err = e
+        if wait is None:
+            raise Unreachable(f"{url}: {err}") from err
+        time.sleep(wait)
 
 
 def key_of(name):
@@ -338,4 +356,10 @@ def build(out_dir, now=None):
 
 
 if __name__ == "__main__":
-    build(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "_site"))
+    try:
+        build(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "_site"))
+    except Unreachable as e:
+        # 75 = try again later: the workflow skips the deploy and Pages keeps the last build. It fails only once
+        # nothing has deployed for a day.
+        print(f"::warning::{e}; deploy skipped, the next hourly run tries again")
+        sys.exit(75)

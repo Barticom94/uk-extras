@@ -15,6 +15,7 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -27,16 +28,25 @@ KINDS = {"movie": {"movie", "tvMovie", "tvSpecial", "video"}, "series": {"tvSeri
 POPULAR_FROM = 2018  # Netflix's all-time list starts with Bird Box (2018); an older film of the same name is never the one
 
 
-def fetch(url, tries=3):
+class Unreachable(Exception):
+    """Netflix or IMDb still failing after the retries (a 5xx, 429, timeout or dropped connection): keep the last rows."""
+
+
+def fetch(url):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (uk-extras weekly build)"})
-    for attempt in range(tries):
+    for wait in (30, 90, None):
         try:
             with urllib.request.urlopen(req, timeout=300) as r:
                 return r.read()
-        except (OSError, http.client.HTTPException):  # the 33 MB file sometimes stops short
-            if attempt == tries - 1:
-                raise
-            time.sleep(10)
+        except urllib.error.HTTPError as e:
+            if e.code < 500 and e.code != 429:
+                raise  # a 404 or 403 won't fix itself: fail the build
+            err = e
+        except (OSError, http.client.HTTPException) as e:  # the 33 MB file sometimes stops short
+            err = e
+        if wait is None:
+            raise Unreachable(f"{url}: {err}") from err
+        time.sleep(wait)
 
 
 def tsv(url):
@@ -146,4 +156,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Unreachable as e:
+        print(f"::warning::{e}; the rows stay as they are, the next run tries again")
+        sys.exit(75)  # try again later: the workflow passes and commits nothing

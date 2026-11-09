@@ -30,11 +30,23 @@ jobs:
       - name: Self-test
         run: python3 -I test_build.py
       - name: Build the free channels
-        run: python3 -I build_channels.py _site
+        id: build
+        run: |
+          python3 -I build_channels.py _site && exit 0 || code=$?
+          [ "$code" -eq 75 ] || exit "$code"
+          # i.mjh.nz is still down (75): skip this deploy and keep the live site, whose tiles keep playing (its now and
+          # next runs out 6 to 14 hours after its build). Its live/ files run 48 hours past that build, so one for 24
+          # hours from now is missing only when nothing has deployed for a day: an outage that long needs a look.
+          curl -fsS --retry 3 -o /dev/null "https://barticom94.github.io/uk-extras/live/news/$(date -u -d '+24 hours' +%Y%m%d%H).json" \
+            || { echo "::error::i.mjh.nz has been down for a day: nothing has deployed since"; exit 1; }
+          echo "skip=true" >> "$GITHUB_OUTPUT"
       - name: Check every tile opens and plays
+        if: steps.build.outputs.skip != 'true'
         run: python3 -I validate.py _site
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      - if: steps.build.outputs.skip != 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
       - id: deploy
+        if: steps.build.outputs.skip != 'true'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -104,6 +104,21 @@ tiles, 60% with an IMDb id (970 of the top 1,000).
 On Windows the `:` in `ukx:` file names is written as `%3A` (NTFS can't hold `:`). GitHub Pages runs on Linux and
 decodes Nuvio's `ukx%3Aabc.json` back to `ukx:abc.json`.
 
+## When a source is down
+
+A download that answers a 5xx or 429, times out or drops is tried again: i.mjh.nz 20 and 60 s later, Netflix and
+IMDb 30 and 90 s later, Tenrai 5, 15 and 45 s later. Still failing, the script exits 75 and its workflow passes with a
+warning, keeping what is live:
+
+- `free-channels.yml` skips the deploy. The live site's tiles keep playing, its now and next lasts 6 to 14 hours
+  after its build, and the run fails only once nothing has deployed for a day (no `live/news/` file 24 hours ahead on
+  Pages). i.mjh.nz answered 503 or 504 for an hour or two on 5 and 8 Nov 2026.
+- `netflix.yml` and `anime.yml` commit nothing: the rows and lists stay as they are and the next run tries again.
+
+A 4xx (a file that moved), a crash or the sanity checks above still fail the run. Pushes are tried three times a
+minute apart, rebased onto anything pushed since the checkout (GitHub refused one with a 500 on 4 Nov 2026), and a
+redeploy that doesn't start is only a warning: the next hourly run deploys anyway.
+
 ## The hourly schedule
 
 GitHub has not run `free-channels.yml` on its schedule yet. Checked 29 Oct 16:31 UTC: the repo was created 12:04,

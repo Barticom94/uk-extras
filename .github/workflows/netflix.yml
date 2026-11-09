@@ -23,14 +23,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the Netflix rows
-        run: python3 -I build_netflix.py
+        # 75: Netflix or IMDb still down after the retries; the rows stay as they are and the next run tries again
+        run: python3 -I build_netflix.py || { code=$?; [ "$code" -eq 75 ] || exit "$code"; }
       - name: Commit and redeploy if they changed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           git add public/catalog netflix_matches.txt
           if git diff --cached --quiet; then echo "Rows unchanged"; exit 0; fi
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -m "Netflix rows for $(date -u +%F)"
-          git push
-          gh workflow run free-channels.yml --ref main
+          git config user.name "github-actions[bot]"  # in config, not -c: a rebase that replays the commit needs it too
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Netflix rows for $(date -u +%F)"
+          # GitHub sometimes refuses a push (500): rebase onto anything pushed since the checkout and try again
+          for try in 1 2 3; do
+            git pull --rebase -q origin main && git push && break
+            [ "$try" -eq 3 ] && exit 1
+            sleep 60
+          done
+          # the hourly Free channels run deploys the new rows anyway; this only gets them out sooner
+          gh workflow run free-channels.yml --ref main || echo "::warning::redeploy not started; the next hourly run deploys the rows"
