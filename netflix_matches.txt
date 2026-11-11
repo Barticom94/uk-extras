@@ -8,7 +8,7 @@
 2026-11-08 Films  4 Collision Course                           tt38793125  2026, IMDb rank 43 (beat tt0097081 1989, rank 33732)
 2026-11-08 TV     4 Nobody Wants This                          tt26933824  2024, IMDb rank 31
 2026-11-08 Films  5 The Pelican Brief                          tt0107798   1993, IMDb rank 424
-2026-11-08 TV     5 Black Doves                                tt27995113  2024, IMDb rank 4
+2026-11-08 TV     5 Black Doves                                tt27995113  2024, IMDb rank 4; already in the row, left out
 2026-11-08 Films  6 Sing                                       tt3470600   2016, IMDb rank 1098
 2026-11-08 TV     6 Instadocs: Jane Doe v. Cornell             -           NO MATCH on IMDb: add an override
 2026-11-08 Films  7 Interstellar                               tt0816692   2014, IMDb rank 138
@@ -39,4 +39,4 @@ popular (Non-English) The Platform                               tt8228288   201
 popular (Non-English) Counterattack                              tt23648788  override
 popular (Non-English) Ad Vitam                                   tt32138452  2025, IMDb rank 21669
 popular (Non-English) Brick                                      tt31806049  2025, IMDb rank 7184
-week 2026-11-08: 10 films, 9 shows, 20 most popular films
+week 2026-11-08: 10 films, 8 shows, 20 most popular films

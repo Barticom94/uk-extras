@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # -I leaves the script folder off the path
 
 from build_channels import genre_of, guide_text, iptv, key_of, segments, uk_time
-from build_netflix import norm
+from build_netflix import add, norm
 
 utc = lambda *a: dt.datetime(*a, tzinfo=dt.timezone.utc).timestamp()
 assert uk_time(utc(2026, 10, 25, 0, 59)) == "01:59"  # still BST
@@ -56,6 +56,10 @@ assert segments(ev, h + 3600, h + 7200) == [[int(h + 3600)]], "after the guide: 
 assert {x[1] for x in segments(filler, t0, t0 + 3600)} == {"Now: Sky News till 22:00 · Next: 22:00 Film"}, "one slot"
 
 assert norm("TYSON") == norm("Tyson") and norm("The Widower: 'Til Death Do Us Part") == "the widower til death do us part"
+row = []  # Netflix rows: nothing validate.py refuses (it holds back every deploy), so no repeats or adult names
+assert add(row, {"id": "tt1", "name": "Black Doves"}, "ok") == "ok" and add(row, {"id": "tt1", "name": "Black Doves"}, "ok") != "ok"
+assert add(row, {"id": "tt2", "name": "The Naughty Nine"}, "ok") != "ok" and add(row, None, "NO MATCH") == "NO MATCH"
+assert row == [{"id": "tt1", "name": "Black Doves"}], row
 
 # iptv/: the household add-on's section order and numbers, one line pair per tile, XML that parses whatever the
 # guides hold, programmes that haven't ended and start within 48 hours.

@@ -26,6 +26,7 @@ SUGGEST = "https://v2.sg.media-imdb.com/suggestion/{first}/{q}.json"
 POSTER = "https://images.metahub.space/poster/medium/{id}/img"
 KINDS = {"movie": {"movie", "tvMovie", "tvSpecial", "video"}, "series": {"tvSeries", "tvMiniSeries", "tvSpecial"}}
 POPULAR_FROM = 2018  # Netflix's all-time list starts with Bird Box (2018); an older film of the same name is never the one
+ADULT = re.compile(r"erotic|xxx|porn|playboy|hustler|red ?light|naughty|after dark|18\+", re.I)  # validate.py's rule
 
 
 class Unreachable(Exception):
@@ -103,6 +104,19 @@ def preview(hit, kind):
     return {k: v for k, v in out.items() if v}
 
 
+def add(row, item, how):
+    """Put a match in its row unless validate.py would refuse it, which would hold back every deploy: a repeat (two
+    seasons of one show chart in the same week, 11 Nov 2026) or a name a public add-on can't show. The report's how."""
+    if not item:
+        return how
+    if any(x["id"] == item["id"] for x in row):
+        return how + "; already in the row, left out"
+    if ADULT.search(item.get("name", "")):
+        return how + "; name not for a public add-on, left out"
+    row.append(item)
+    return how
+
+
 def weekly_rows(rows, overrides, report):
     gb = [r for r in rows if r["country_iso2"] == "GB"]
     week = max(r["week"] for r in gb)
@@ -110,9 +124,8 @@ def weekly_rows(rows, overrides, report):
     for r in sorted((r for r in gb if r["week"] == week), key=lambda r: int(r["weekly_rank"])):
         kind = "movie" if r["category"] == "Films" else "series"
         item, how = match(kind, r["show_title"], overrides)
+        how = add(out[r["category"]], item, how)
         report.append(f"{week} {r['category']:5} {r['weekly_rank']:>2} {r['show_title'][:42]:42} {item['id'] if item else '-':11} {how}")
-        if item:
-            out[r["category"]].append(item)
     return week, out
 
 
@@ -121,9 +134,8 @@ def popular_rows(rows, overrides, report):
     out = []
     for r in films:
         item, how = match("movie", r["show_title"], overrides, min_year=POPULAR_FROM)
+        how = add(out, item, how)
         report.append(f"popular {r['category'][6:]:13} {r['show_title'][:42]:42} {item['id'] if item else '-':11} {how}")
-        if item:
-            out.append(item)
     return out
 
 
