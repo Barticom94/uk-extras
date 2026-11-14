@@ -1,10 +1,11 @@
 name: Free channels
 
-# Rebuilds the free channel files (now and next changes hourly) and deploys the whole site to GitHub Pages.
-# Nothing is committed: the downloads and the built JSON live only in the Pages artifact.
+# Rebuilds the free channel files and deploys the whole site to GitHub Pages. Nothing is committed: the downloads and
+# the built JSON live only in the Pages artifact. The UK TiviMate Worker starts it every 3 hours (each build's now and
+# next reaches 5 hours and more ahead); GitHub's own schedule, which fires only now and then here, is a backup.
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "17 */6 * * *"
   push:
     branches: [main]
   workflow_dispatch:
@@ -24,29 +25,47 @@ jobs:
     timeout-minutes: 15
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.redeploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Self-test
         run: python3 -I test_build.py
+      # A run fails when our code or data is wrong (self-test, build, validate) or when nothing has gone live for a day.
+      # i.mjh.nz or GitHub having a moment only means this run deploys nothing: the live site keeps playing and the next
+      # run tries again (the last step decides).
       - name: Build the free channels
         id: build
-        run: |
-          python3 -I build_channels.py _site && exit 0 || code=$?
-          [ "$code" -eq 75 ] || exit "$code"
-          # i.mjh.nz is still down (75): skip this deploy and keep the live site, whose tiles keep playing (its now and
-          # next runs out 6 to 14 hours after its build). Its live/ files run 48 hours past that build, so one for 24
-          # hours from now is missing only when nothing has deployed for a day: an outage that long needs a look.
-          curl -fsS --retry 3 -o /dev/null "https://barticom94.github.io/uk-extras/live/news/$(date -u -d '+24 hours' +%Y%m%d%H).json" \
-            || { echo "::error::i.mjh.nz has been down for a day: nothing has deployed since"; exit 1; }
-          echo "skip=true" >> "$GITHUB_OUTPUT"
+        # 75: i.mjh.nz still down after the retries
+        run: python3 -I build_channels.py _site || { code=$?; [ "$code" -eq 75 ] || exit "$code"; echo "skip=true" >> "$GITHUB_OUTPUT"; }
       - name: Check every tile opens and plays
         if: steps.build.outputs.skip != 'true'
         run: python3 -I validate.py _site
-      - if: steps.build.outputs.skip != 'true'
+      - id: upload
+        if: steps.build.outputs.skip != 'true'
+        continue-on-error: true
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
       - id: deploy
-        if: steps.build.outputs.skip != 'true'
+        if: steps.upload.outcome == 'success'
+        continue-on-error: true
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      # GitHub sometimes can't find the artifact it has just taken (14 Nov 2026): once more, a minute later
+      - name: Wait a minute
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 60
+      - id: redeploy
+        if: steps.deploy.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Nothing went live this run, so is the live site under a day old?
+        if: steps.deploy.outcome != 'success' && steps.redeploy.outcome != 'success'
+        # Its live/ files run 48 hours past its build, so one for 24 hours from now is missing only when nothing has
+        # deployed for a day: that needs a look. Its tiles keep playing either way; now and next lasts 5 hours and more.
+        run: |
+          if curl -fsS --retry 3 -o /dev/null "https://barticom94.github.io/uk-extras/live/news/$(date -u -d '+24 hours' +%Y%m%d%H).json"; then
+            echo "::warning::nothing deployed this run (see the steps above); the live site is under a day old, the next run tries again"
+          else
+            echo "::error::nothing has deployed for a day"
+            exit 1
+          fi

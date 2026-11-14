@@ -41,5 +41,5 @@ jobs:
             [ "$try" -eq 3 ] && exit 1
             sleep 60
           done
-          # the hourly Free channels run deploys the new lists anyway; this only gets them out sooner
-          gh workflow run free-channels.yml --ref main || echo "::warning::redeploy not started; the next hourly run deploys the lists"
+          # the next Free channels run (every 3 hours) deploys the new lists anyway; this only gets them out sooner
+          gh workflow run free-channels.yml --ref main || echo "::warning::redeploy not started; the next Free channels run deploys the lists"

@@ -9,8 +9,8 @@ A small static Stremio add-on for Nuvio, served from GitHub Pages:
 | Netflix UK Top 10 Shows | series | `ukx.netflix-top10-shows` | weekly |
 | Netflix UK Top 10 Films | movie | `ukx.netflix-top10-films` | weekly |
 | Netflix Most Popular Films | movie | `ukx.netflix-popular` | weekly |
-| Free UK Channels | tv | `ukx.free` (genre: News, Entertainment, Movies, Kids, Sport, Documentary, Music, Lifestyle) | hourly |
-| Entertainment, Films, Sport, News, Documentaries, Kids, Music, Lifestyle | tv | `uks.entertainment`, `uks.films`, `uks.sport`, `uks.news`, `uks.documentaries`, `uks.kids`, `uks.music`, `uks.lifestyle` | hourly |
+| Free UK Channels | tv | `ukx.free` (genre: News, Entertainment, Movies, Kids, Sport, Documentary, Music, Lifestyle) | every 3 hours |
+| Entertainment, Films, Sport, News, Documentaries, Kids, Music, Lifestyle | tv | `uks.entertainment`, `uks.films`, `uks.sport`, `uks.news`, `uks.documentaries`, `uks.kids`, `uks.music`, `uks.lifestyle` | every 3 hours |
 
 Every catalogue has `showInHome: false`: they are meant for collection folders, not the home screen.
 Netflix items are IMDb ids, so your metadata and stream add-ons open and play them. Free channels use `ukx:` ids,
@@ -36,7 +36,7 @@ Pluto TV and Plex (`<service>/.channels.json.gz` and `<service>/gb.xml.gz`). It:
   that has started shows the right now and next between builds, for as long as each guide reaches: on 29 Oct Samsung
   TV Plus's guide reached about 6 hours ahead, Pluto TV's about 14, Plex's up to 60. The household add-on reads these;
 - keeps now and next out of the catalogues and metas here (names, logos and blurbs only): Pages serves them as they
-  were built, and with no hourly build (see below) they would show programmes that finished hours ago. So this
+  were built, and with a build only every 3 hours (see below) they would show programmes that finished hours ago. So this
   add-on on its own has no now and next; `validate.py` fails a build that puts it back;
 - sorts each genre in Samsung's and Pluto's own channel order, then Plex alphabetically;
 - writes the pieces an IPTV playlist and guide need into `iptv/`: `free.m3u` (an `#EXTINF` line and its stream for
@@ -104,34 +104,33 @@ tiles, 60% with an IMDb id (970 of the top 1,000).
 On Windows the `:` in `ukx:` file names is written as `%3A` (NTFS can't hold `:`). GitHub Pages runs on Linux and
 decodes Nuvio's `ukx%3Aabc.json` back to `ukx:abc.json`.
 
-## When a source is down
+## When a run fails
 
-A download that answers a 5xx or 429, times out or drops is tried again: i.mjh.nz 20 and 60 s later, Netflix and
-IMDb 30 and 90 s later, Tenrai 5, 15 and 45 s later. Still failing, the script exits 75 and its workflow passes with a
-warning, keeping what is live:
+A run fails only when our code or data is wrong (the self-test, a crash, a 4xx such as a file that moved, a sanity
+check, validate.py) or when the live site has gone a day without a deploy. Anything i.mjh.nz, Netflix, IMDb, Tenrai or
+GitHub does for a while is a warning, and the next run tries again. Each failure here was one of those (Free channels
+ran 431 times by 14 Nov): i.mjh.nz answering 503/504 for an hour or two (5 and 8 Nov), GitHub refusing a push (4 Nov),
+GitHub losing the artifact it had just taken (14 Nov) and a run that never started (11 Nov).
 
-- `free-channels.yml` skips the deploy. The live site's tiles keep playing, its now and next lasts 6 to 14 hours
-  after its build, and the run fails only once nothing has deployed for a day (no `live/news/` file 24 hours ahead on
-  Pages). i.mjh.nz answered 503 or 504 for an hour or two on 5 and 8 Nov 2026.
-- `netflix.yml` and `anime.yml` commit nothing: the rows and lists stay as they are and the next run tries again.
+- **Downloads** that answer a 5xx or 429, time out or drop are tried again: i.mjh.nz 20 and 60 s later, Netflix and
+  IMDb 30 and 90 s later, Tenrai 5, 15 and 45 s later. Still failing, the script exits 75.
+- **`free-channels.yml`** then deploys nothing, and so it does when GitHub's upload fails or its deploy fails twice, a
+  minute apart. The live site's tiles keep playing and its now and next lasts 5 hours and more. The last step fails
+  the run only when Pages has no `live/news/` file for 24 hours from now, that is when nothing has deployed for a day.
+- **`netflix.yml` and `anime.yml`** commit nothing on a 75: the rows and lists stay as they are. Pushes are tried
+  three times a minute apart, rebased onto anything pushed since the checkout, and a redeploy that doesn't start is
+  only a warning: the next Free channels run deploys anyway.
+- **Netflix rows** leave out what validate.py would refuse (a repeat, as when two seasons of one show chart in the
+  same week, or an adult name), which would otherwise hold back every Free channels deploy (11 Nov).
+- **A run that never starts** can't be caught from inside it. Fewer runs make it rarer: hence every 3 hours below.
 
-A 4xx (a file that moved), a crash or the sanity checks above still fail the run. Pushes are tried three times a
-minute apart, rebased onto anything pushed since the checkout (GitHub refused one with a 500 on 4 Nov 2026), and a
-redeploy that doesn't start is only a warning: the next hourly run deploys anyway.
+## When it runs
 
-## The hourly schedule
-
-GitHub has not run `free-channels.yml` on its schedule yet. Checked 29 Oct 16:31 UTC: the repo was created 12:04,
-both workflows are `active` on the default branch `main`, Actions are enabled with all actions allowed, the
-`github-pages` environment allows `main`, and push and manual runs all succeeded, yet no `schedule` run exists for
-`7 * * * *` (13:07, 14:07) or `17 * * * *` (15:17 and 16:17, set at 14:44). The same account's schedules do run in two
-other repos (a weekly one up to 90 minutes late; a daily one first ran 8 hours after its workflow was added). So
-nothing in this repo is set wrong that we can see: GitHub hasn't started the schedule for a new repo yet, and its
-docs say scheduled runs "can be delayed" under load and may be dropped. Nothing here can make it fire. What doesn't
-depend on it:
-
-- the hourly files above keep now and next right for 6 to 14 hours after the last build;
-- the household add-on's hourly cron can start this workflow through GitHub's API (`workflow_dispatch`, which works)
-  once it holds a fine-grained token for this repo with Actions: read and write, and `netflix.yml` on Wednesdays and
-  Fridays at 10:07 UTC (that schedule hasn't fired either, so the Netflix rows only change when it runs);
-- by hand: `gh workflow run free-channels.yml -R Barticom94/uk-extras`.
+- **Free channels:** every 3 hours, started by the UK TiviMate Worker's hourly cron on every third run (00:37,
+  03:37... UTC). Each build's live/ files reach as far as its guides, 5.2 hours at the least and 15 in the middle for
+  the 440 channels with a guide (14 Nov), so the hours between need no build. GitHub's own schedule (`17 */6 * * *`)
+  is a backup: in this repo it fires only now and then (it never fired at first, 29 Oct, and 7 times in two days
+  from 12 Nov at hourly). Netflix and anime runs start one when their rows change, and so does a push to `main`.
+- **Netflix rows:** UK Sport's Worker on Wednesdays and Fridays at 10:07 UTC, and GitHub's schedule as a backup.
+- **Anime lists:** UK Sport's Worker on Thursdays at 10:07 UTC.
+- By hand: `gh workflow run free-channels.yml -R Barticom94/uk-extras`.

@@ -2,7 +2,7 @@
 (live/) and the IPTV playlist and guide pieces (iptv/) from i.mjh.nz (Samsung TV Plus, Pluto TV, Plex).
 
 python -I build_channels.py [out_dir]   (default _site). Copies public/ (manifest + Netflix rows) into out_dir first.
-Standard library only. Runs hourly in GitHub Actions; nothing it downloads is committed.
+Standard library only. Runs every 3 hours in GitHub Actions; nothing it downloads is committed.
 """
 import datetime as dt
 import gzip
@@ -361,5 +361,5 @@ if __name__ == "__main__":
     except Unreachable as e:
         # 75 = try again later: the workflow skips the deploy and Pages keeps the last build. It fails only once
         # nothing has deployed for a day.
-        print(f"::warning::{e}; deploy skipped, the next hourly run tries again")
+        print(f"::warning::{e}; deploy skipped, the next run tries again")
         sys.exit(75)
