@@ -1,42 +1,42 @@
 # How each Netflix title was matched. Wrong or missing? Add it to netflix_overrides.json.
-2026-11-15 Films  1 Russell Brand: Open Secret                 tt50969289  2026, IMDb rank 402
-2026-11-15 TV     1 Black Doves                                tt27995113  2024, IMDb rank 8
-2026-11-15 Films  2 In the Heart of the Sea                    tt1390411   2015, IMDb rank 259
-2026-11-15 TV     2 Taken: Natalee Holloway                    tt43681696  2026, IMDb rank 1015
-2026-11-15 Films  3 How the Grinch Stole Christmas             tt0170016   2000, IMDb rank 436 (beat tt0060345 1966, rank 3904)
-2026-11-15 TV     3 Black Doves                                tt27995113  2024, IMDb rank 8; already in the row, left out
-2026-11-15 Films  4 The Christmas Switch                       tt39313557  2026, IMDb rank 83 (beat tt3786326 2014, rank 15495)
-2026-11-15 TV     4 Doozie's Doghouse                          tt47596905  2026, IMDb rank 2581
-2026-11-15 Films  5 Sing 2                                     tt6467266   2021, IMDb rank 996
-2026-11-15 TV     5 The Body                                   tt8014982   2026, IMDb rank 2
-2026-11-15 Films  6 Heartland                                  tt38213251  2026, IMDb rank 11 (beat tt0082508 1979, rank 24131)
-2026-11-15 TV     6 The One About Matthew Perry                tt44941753  2026, IMDb rank 1400
-2026-11-15 Films  7 A Dog's Perfect Christmas                  tt38515310  2026, IMDb rank 40
-2026-11-15 TV     7 Raw                                        tt1233560   2008, IMDb rank 57600
-2026-11-15 Films  8 The Unthinkable Daughter                   tt50817930  2026, IMDb rank 780
-2026-11-15 TV     8 Nobody Wants This                          tt26933824  2024, IMDb rank 63
-2026-11-15 Films  9 Interstellar                               tt0816692   2014, IMDb rank 135
-2026-11-15 TV     9 Us                                         tt10669608  2020, IMDb rank 2396
-2026-11-15 Films 10 Fred Claus                                 tt0486583   2007, IMDb rank 2260
-2026-11-15 TV    10 Ms. Rachel                                 tt35406274  2025, IMDb rank 18941
-popular (English)     KPop Demon Hunters                         tt14205554  2025, IMDb rank 1196
-popular (English)     Red Notice                                 tt7991608   2021, IMDb rank 2835
-popular (English)     Carry-On                                   tt21382296  2024, IMDb rank 2097
-popular (English)     Don't Look Up                              tt11286314  2021, IMDb rank 1041
-popular (English)     The Adam Project                           tt2463208   2022, IMDb rank 1986
-popular (English)     Bird Box                                   tt2737304   2018, IMDb rank 3012
-popular (English)     Back in Action                             tt21191806  2025, IMDb rank 4816
-popular (English)     Swapped                                    tt29552248  2026, IMDb rank 1512 (beat tt19871860 2020, rank 452771)
-popular (English)     Leave the World Behind                     tt12747748  2023, IMDb rank 158
-popular (English)     War Machine                                tt15940132  2026, IMDb rank 512
-popular (Non-English) Troll                                      tt11116912  2022, IMDb rank 8247
-popular (Non-English) Under Paris                                tt13964390  2024, IMDb rank 12790
-popular (Non-English) Society of the Snow                        tt16277242  2023, IMDb rank 2083
-popular (Non-English) Exterritorial                              tt30876483  2025, IMDb rank 18761
-popular (Non-English) The Great Flood                            tt29927663  2025, IMDb rank 6402
-popular (Non-English) Nowhere                                    tt15789472  2023, IMDb rank 7369
-popular (Non-English) The Platform                               tt8228288   2019, IMDb rank 2258 (beat tt9861264 2025, rank 197670)
+2026-11-22 Films  1 Guarding Stars                             tt6611324   2026, IMDb rank 5
+2026-11-22 TV     1 Black Doves                                tt27995113  2024, IMDb rank 15
+2026-11-22 Films  2 Russell Brand: Open Secret                 tt50969289  2026, IMDb rank 971
+2026-11-22 TV     2 The Body                                   tt8014982   2026, IMDb rank 2
+2026-11-22 Films  3 Dr. Seuss' The Grinch                      -           NO MATCH on IMDb: add an override
+2026-11-22 TV     3 Countdown To Murder                        tt3263968   2013, IMDb rank 9988
+2026-11-22 Films  4 Heartland                                  tt38213251  2026, IMDb rank 14 (beat tt3920890 2016, rank 33287)
+2026-11-22 TV     4 Black Doves                                tt27995113  2024, IMDb rank 15; already in the row, left out
+2026-11-22 Films  5 Steps                                      tt14413964  2026, IMDb rank 12 (beat tt4340726 2021, rank 43213)
+2026-11-22 TV     5 Taken: Natalee Holloway                    tt43681696  2026, IMDb rank 2420
+2026-11-22 Films  6 How the Grinch Stole Christmas             tt0170016   2000, IMDb rank 319 (beat tt0060345 1966, rank 2443)
+2026-11-22 TV     6 The Law of Beasts                          -           NO MATCH on IMDb: add an override
+2026-11-22 Films  7 The Christmas Switch                       tt39313557  2026, IMDb rank 145 (beat tt3786326 2014, rank 25045)
+2026-11-22 TV     7 Danny Go!                                  tt13158394  2020, IMDb rank 27836
+2026-11-22 Films  8 Nativity!                                  tt1242447   2009, IMDb rank 1857
+2026-11-22 TV     8 Raw                                        tt1233560   2008, IMDb rank 56957
+2026-11-22 Films  9 That Christmas                             tt14855468  2024, IMDb rank 1947
+2026-11-22 TV     9 Ms. Rachel                                 tt35406274  2025, IMDb rank 20354
+2026-11-22 Films 10 Never Surrender                            tt39370926  2026, IMDb rank 109 (beat tt1307989 2009, rank 25022)
+2026-11-22 TV    10 Doozie's Doghouse                          tt47596905  2026, IMDb rank 8466
+popular (English)     KPop Demon Hunters                         tt14205554  2025, IMDb rank 1111
+popular (English)     Red Notice                                 tt7991608   2021, IMDb rank 2325
+popular (English)     Carry-On                                   tt21382296  2024, IMDb rank 1804
+popular (English)     Don't Look Up                              tt11286314  2021, IMDb rank 781
+popular (English)     The Adam Project                           tt2463208   2022, IMDb rank 1524
+popular (English)     Bird Box                                   tt2737304   2018, IMDb rank 2649
+popular (English)     Back in Action                             tt21191806  2025, IMDb rank 3997
+popular (English)     Swapped                                    tt29552248  2026, IMDb rank 1462 (beat tt19871860 2020, rank 435847)
+popular (English)     Leave the World Behind                     tt12747748  2023, IMDb rank 233
+popular (English)     War Machine                                tt15940132  2026, IMDb rank 471
+popular (Non-English) Troll                                      tt11116912  2022, IMDb rank 10697
+popular (Non-English) Under Paris                                tt13964390  2024, IMDb rank 15107
+popular (Non-English) Society of the Snow                        tt16277242  2023, IMDb rank 2129
+popular (Non-English) Exterritorial                              tt30876483  2025, IMDb rank 12353
+popular (Non-English) The Great Flood                            tt29927663  2025, IMDb rank 5846
+popular (Non-English) Nowhere                                    tt15789472  2023, IMDb rank 7177
+popular (Non-English) The Platform                               tt8228288   2019, IMDb rank 2683 (beat tt9861264 2025, rank 325267)
 popular (Non-English) Counterattack                              tt23648788  override
-popular (Non-English) Ad Vitam                                   tt32138452  2025, IMDb rank 12510
-popular (Non-English) Brick                                      tt31806049  2025, IMDb rank 9995
-week 2026-11-15: 10 films, 9 shows, 20 most popular films
+popular (Non-English) Ad Vitam                                   tt32138452  2025, IMDb rank 31724
+popular (Non-English) Brick                                      tt31806049  2025, IMDb rank 8981
+week 2026-11-22: 9 films, 8 shows, 20 most popular films
